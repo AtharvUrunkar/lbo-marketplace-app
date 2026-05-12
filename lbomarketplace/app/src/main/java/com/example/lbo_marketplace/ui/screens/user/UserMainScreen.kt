@@ -2,15 +2,19 @@ package com.example.lbo_marketplace.ui.screens.user
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.lbo_marketplace.auth.AuthViewModel
 import com.example.lbo_marketplace.auth.ProviderViewModel
 import com.example.lbo_marketplace.booking.BookingViewModel
+import com.example.lbo_marketplace.ui.screens.user.chat.ChatScreen
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -26,10 +30,21 @@ fun UserMainScreen(
     // 🔥 BOOKING FLOW
     var selectedProviderId by remember { mutableStateOf<String?>(null) }
 
+    // 🤖 CHAT FLOW
+    var showChatScreen by remember { mutableStateOf(false) }
+
     val providerViewModel: ProviderViewModel = viewModel()
     val bookingViewModel: BookingViewModel = viewModel()
 
     val user = FirebaseAuth.getInstance().currentUser
+
+    // ===================== 🤖 CHAT SCREEN =====================
+    if (showChatScreen) {
+        ChatScreen(
+            onBack = { showChatScreen = false }
+        )
+        return
+    }
 
     // ===================== 🔥 BOOKING SCREEN =====================
     if (selectedProviderId != null) {
@@ -110,6 +125,21 @@ fun UserMainScreen(
                     label = { Text("Profile") }
                 )
             }
+        },
+        // 🤖 CHAT FAB
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showChatScreen = true },
+                shape = CircleShape,
+                containerColor = Color(0xFF6C63FF),
+                contentColor = Color.White,
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Chat,
+                    contentDescription = "AI Chat Assistant"
+                )
+            }
         }
     ) { padding ->
 
@@ -137,4 +167,4 @@ fun UserMainScreen(
             }
         }
     }
-}
+}

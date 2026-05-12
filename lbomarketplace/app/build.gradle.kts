@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+}
+
+// Read local.properties for API keys
+val localProperties = Properties().apply {
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        load(localPropsFile.inputStream())
+    }
 }
 
 android {
@@ -19,6 +29,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Inject Hugging Face API key into BuildConfig
+        buildConfigField(
+            "String",
+            "HF_API_KEY",
+            "\"${localProperties.getProperty("HF_API_KEY", "")}\""
+        )
     }
 
     buildTypes {
@@ -39,6 +56,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -90,4 +108,20 @@ dependencies {
         implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("androidx.compose.foundation:foundation:1.5.4")
     implementation("com.google.android.gms:play-services-location:21.0.1")
+
+    // ==================== 🤖 AI CHATBOT DEPENDENCIES ====================
+
+    // Retrofit (networking)
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // OkHttp (HTTP client + logging)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Gson (JSON parsing)
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Compose Icons Extended (for chat icon)
+    implementation("androidx.compose.material:material-icons-extended")
 }
