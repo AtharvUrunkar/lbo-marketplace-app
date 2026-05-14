@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "882406731041",
+    "firebase_url": "https://celebration-wall-d5f34-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "celebration-wall-d5f34",
+    "storage_bucket": "celebration-wall-d5f34.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:882406731041:android:ea279bb24595937e02a260",
+        "android_client_info": {
+          "package_name": "com.example.lbo_marketplace"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQpsVKjNe8C41ciBzSWYd2RzUBnQa0Ks8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

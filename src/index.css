@@ -1,0 +1,61 @@
+/* FILE: index.css | PURPOSE: Global design tokens & resets
+   PAST: Large, bulky dimensions.
+   PRESENT: Minimal, compact design system with refined spacing and smaller footprints.
+   REFERENCED BY: App.js, Login.js, RequestList.js */
+
+:root {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #fdfdfd;
+  --color-bg-card: #D9D9D9;
+  --color-bg-card-hover: #cfcfcf;
+  --color-bg-input: #ffffff;
+  --color-sidebar: #ffffff;
+  --color-sidebar-hover: #f9f9f9;
+  --color-sidebar-active: #f0f0f0;
+  --color-accent: #000000;
+  --color-accent-hover: #222222;
+  --color-accent-glow: rgba(0, 0, 0, 0.02);
+  --color-success: #000000;
+  --color-success-hover: #222222;
+  --color-danger: #ee5253;
+  --color-danger-hover: #ff6b6b;
+  --color-warning: #feca57;
+  --color-text-primary: #000000;
+  --color-text-secondary: #576574;
+  --color-text-muted: #8395a7;
+  --color-border: #000000;
+  --color-border-light: #f1f2f6;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.05);
+  --shadow-glow: none;
+  --space-xs: 4px; --space-sm: 8px; --space-md: 12px;
+  --space-lg: 16px; --space-xl: 24px; --space-2xl: 32px;
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px;
+  --radius-xl: 24px; --radius-full: 9999px;
+  --font-family: 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms ease;
+  --sidebar-width: 240px; /* Reduced from 280px */
+  --header-height: 64px; /* Reduced from 80px */
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg-primary); }
+::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: #bdbdbd; }
+
+code { font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace; }
