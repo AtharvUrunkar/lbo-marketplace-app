@@ -15,8 +15,12 @@ class ProviderViewModel : ViewModel() {
     var applyState by mutableStateOf("")
         private set
 
-    // 🔥 PROVIDER LIST (MISSING BEFORE)
+    // 🔥 PROVIDER LIST
     var providers by mutableStateOf<List<Provider>>(emptyList())
+        private set
+
+    // 🔥 LOADING STATE FOR SKELETONS
+    var isLoading by mutableStateOf(false)
         private set
 
     // ---------------- APPLY FUNCTION ----------------
@@ -54,7 +58,9 @@ class ProviderViewModel : ViewModel() {
     // ---------------- FETCH PROVIDERS ----------------
     fun fetchProviders() {
         viewModelScope.launch {
+            isLoading = true
             providers = repo.getApprovedProviders()
+            isLoading = false
         }
     }
 }

@@ -1,11 +1,7 @@
 package com.example.lbo_marketplace.ui.screens.user
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.with
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
@@ -113,8 +109,8 @@ fun UserMainScreen(
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Search, null) },
-                    label = { Text("Services") }
+                    icon = { Icon(Icons.Default.Public, null) },
+                    label = { Text("Community") }
                 )
 
                 NavigationBarItem(
@@ -157,12 +153,12 @@ fun UserMainScreen(
                 }, label = ""
             ) { targetTab ->
                 when (targetTab) {
-                    0 -> HomeTab()
-                    1 -> ServicesTab(
+                    0 -> HomeTab(
                         onBookClick = { providerId ->
                             selectedProviderId = providerId
                         }
                     )
+                    1 -> CommunityTab()
                     2 -> BookingTab()
                     3 -> ProfileTab(
                         authViewModel = authViewModel,
@@ -174,4 +170,4 @@ fun UserMainScreen(
             }
         }
     }
-}
+}
