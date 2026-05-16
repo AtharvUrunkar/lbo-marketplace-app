@@ -1,5 +1,6 @@
 package com.example.lbo_marketplace.ui.screens.user
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,55 +26,59 @@ fun ServicesTab(
         viewModel.fetchProviders()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn() + slideInHorizontally(),
+        modifier = Modifier.fillMaxSize()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            // 🔥 SEARCH BAR (ADD BELOW TITLE)
+            Text("Available Providers", style = MaterialTheme.typography.titleLarge)
 
-        // 🔥 SEARCH BAR (ADD BELOW TITLE)
-        Text("Available Providers", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(10.dp))
 
-        Spacer(modifier = Modifier.height(10.dp))
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Search service (e.g. Electrician)") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            label = { Text("Search service (e.g. Electrician)") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+            // 🔥 FILTER LOGIC
+            val filteredProviders = providers.filter {
+                it.serviceType.contains(searchQuery, ignoreCase = true) || 
+                it.name.contains(searchQuery, ignoreCase = true)
+            }
 
-        // 🔥 FILTER LOGIC
-        val filteredProviders = providers.filter {
-            it.serviceType.contains(searchQuery, ignoreCase = true) || 
-            it.name.contains(searchQuery, ignoreCase = true)
-        }
+            if (filteredProviders.isEmpty()) {
+                Text("No providers found")
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(filteredProviders) { provider ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(provider.name, style = MaterialTheme.typography.titleMedium)
+                                Text(provider.serviceType, style = MaterialTheme.typography.bodyMedium)
 
-        if (filteredProviders.isEmpty()) {
-            Text("No providers found")
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(filteredProviders) { provider ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                                Spacer(modifier = Modifier.height(8.dp))
 
-                            Text(provider.name)
-                            Text(provider.serviceType)
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Button(onClick = {
-                                onBookClick(provider.id)
-                            }) {
-                                Text("Book Now")
+                                Button(onClick = {
+                                    onBookClick(provider.id)
+                                }) {
+                                    Text("Book Now")
+                                }
                             }
                         }
                     }

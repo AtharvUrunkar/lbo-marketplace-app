@@ -1,5 +1,11 @@
 package com.example.lbo_marketplace.ui.screens.user
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.with
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
@@ -144,26 +150,27 @@ fun UserMainScreen(
     ) { padding ->
 
         Box(modifier = Modifier.padding(padding)) {
-
-            when (selectedTab) {
-
-                0 -> HomeTab()
-
-                // 🔥 FIXED (PASS CALLBACK)
-                1 -> ServicesTab(
-                    onBookClick = { providerId ->
-                        selectedProviderId = providerId
-                    }
-                )
-
-                2 -> BookingTab()
-
-                3 -> ProfileTab(
-                    authViewModel = authViewModel,
-                    onApplyClick = {
-                        showApplyScreen = true
-                    }
-                )
+            AnimatedContent(
+                targetState = selectedTab,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                }, label = ""
+            ) { targetTab ->
+                when (targetTab) {
+                    0 -> HomeTab()
+                    1 -> ServicesTab(
+                        onBookClick = { providerId ->
+                            selectedProviderId = providerId
+                        }
+                    )
+                    2 -> BookingTab()
+                    3 -> ProfileTab(
+                        authViewModel = authViewModel,
+                        onApplyClick = {
+                            showApplyScreen = true
+                        }
+                    )
+                }
             }
         }
     }
