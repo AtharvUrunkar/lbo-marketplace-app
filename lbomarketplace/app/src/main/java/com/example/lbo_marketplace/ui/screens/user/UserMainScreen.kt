@@ -1,7 +1,9 @@
 package com.example.lbo_marketplace.ui.screens.user
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +44,7 @@ fun UserMainScreen(
 
     // ===================== 🤖 CHAT SCREEN =====================
     if (showChatScreen) {
+        BackHandler(onBack = { showChatScreen = false })
         ChatScreen(
             onBack = { showChatScreen = false }
         )
@@ -53,6 +56,7 @@ fun UserMainScreen(
 
         BookingScreen(
             providerId = selectedProviderId!!,
+            onBack = { selectedProviderId = null },
             onSubmit = { problem, address ->
 
                 user?.let {
@@ -73,7 +77,7 @@ fun UserMainScreen(
 
     // ===================== 🔥 APPLY SCREEN =====================
     if (showApplyScreen) {
-
+        BackHandler(onBack = { showApplyScreen = false })
         ApplyProviderScreen { name, serviceType, description, experience, lat, lng ->
 
             user?.let {
@@ -96,8 +100,13 @@ fun UserMainScreen(
 
     // ===================== 🔥 MAIN UI =====================
     Scaffold(
+        containerColor = Color.White, // FIX: Pure White Background
+        contentColor = Color.Black,
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = Color.White,
+                tonalElevation = 0.dp // FIX: Disable tonal elevation
+            ) {
 
                 NavigationBarItem(
                     selected = selectedTab == 0,
@@ -145,7 +154,7 @@ fun UserMainScreen(
         }
     ) { padding ->
 
-        Box(modifier = Modifier.padding(padding)) {
+        Box(modifier = Modifier.padding(padding).background(Color.White)) {
             AnimatedContent(
                 targetState = selectedTab,
                 transitionSpec = {
