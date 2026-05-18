@@ -93,7 +93,7 @@ fun AppNavigation(viewModel: AuthViewModel = viewModel()) {
 
             // STATE: ProviderPending -> Shows review screen.
             is AuthState.ProviderPending -> {
-                PendingReviewScreen()
+                PendingReviewScreen(onLogout = { viewModel.logout() })
             }
 
             // DEFAULT fallback.
@@ -226,10 +226,11 @@ fun VideoLoader(videoResId: Int, onError: () -> Unit) {
  * Renders a premium "Under Review" screen for Service Providers.
  */
 @Composable
-fun PendingReviewScreen() {
+fun PendingReviewScreen(onLogout: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.White)
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -238,19 +239,31 @@ fun PendingReviewScreen() {
             text = "⏳",
             style = MaterialTheme.typography.displayLarge
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Your application is under review",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary
+            text = "Application Under Review",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Our team is verifying your credentials. Please check back later.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = "Your document has been submitted and is currently being verified by our LBO Administration team.\n\nThank you for your patience!",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Gray,
             textAlign = TextAlign.Center
         )
+        Spacer(modifier = Modifier.height(48.dp))
+        Button(
+            onClick = onLogout,
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(56.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+        ) {
+            Text("Logout", fontWeight = FontWeight.Bold)
+        }
     }
 }
 
