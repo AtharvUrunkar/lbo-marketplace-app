@@ -125,7 +125,17 @@ dependencies {
     // Compose Icons Extended (for chat icon)
     implementation("androidx.compose.material:material-icons-extended")
 
+<<<<<<< HEAD
     implementation("io.coil-kt:coil-compose:2.5.0")
 
     implementation("id.zelory:compressor:3.0.1")//image compression
+=======
+    // Coil for GIF support
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
+
+    // Media3 for MP4 support
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+>>>>>>> 14c3ab440ac402cd0aff62ae22f766f47d3ed65a
 }
