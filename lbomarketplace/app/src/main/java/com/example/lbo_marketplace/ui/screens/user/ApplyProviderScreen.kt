@@ -189,10 +189,12 @@ fun ApplyProviderScreen(
                     "application/pdf"
                 )
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
         ) {
 
-            Text("Upload Verification Document")
+            Text("Upload Verification Document", fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -382,7 +384,9 @@ fun ApplyProviderScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
             enabled = !isSubmitting
         ) {
 
@@ -390,12 +394,13 @@ fun ApplyProviderScreen(
 
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
+                    color = Color.White,
                     strokeWidth = 2.dp
                 )
 
             } else {
 
-                Text("Submit Application")
+                Text("Submit Application", fontWeight = FontWeight.Bold)
             }
         }
 
