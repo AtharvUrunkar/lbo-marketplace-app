@@ -1,20 +1,23 @@
 package com.example.lbo_marketplace.ui.screens.user
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
  * Booking Screen where users provide problem details and address.
  * 
  * FIXES:
- * - Fixed unresolved reference 'RoundedCornerShape' by cleaning up imports and removing invalid helper.
- * - Added statusBarsPadding() to prevent overlap with device header/status bar.
- * - Added BackHandler to intercept device back button and return to HomeTab instead of exiting app.
+ * - Set Submit Request button to FULL BLACK (#000000).
+ * - Guaranteed PURE WHITE (#FFFFFF) background.
+ * - Ensures status bar padding and back navigation are correct.
  */
 @Composable
 fun BookingScreen(
@@ -31,14 +34,16 @@ fun BookingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding() // FIX: Ensures UI starts below the status bar
+            .background(Color.White) // ✅ PURE WHITE
+            .statusBarsPadding()
             .padding(16.dp)
     ) {
 
         Text(
             text = "Book Service",
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -48,7 +53,12 @@ fun BookingScreen(
             onValueChange = { problem = it },
             label = { Text("Describe your problem") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Black,
+                unfocusedBorderColor = Color.Gray,
+                focusedLabelColor = Color.Black
+            )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -58,7 +68,12 @@ fun BookingScreen(
             onValueChange = { address = it },
             label = { Text("Enter your address") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Black,
+                unfocusedBorderColor = Color.Gray,
+                focusedLabelColor = Color.Black
+            )
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -70,9 +85,10 @@ fun BookingScreen(
                 }
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black) // ✅ FULL BLACK
         ) {
-            Text("Submit Request", style = MaterialTheme.typography.titleMedium)
+            Text("Submit Request", style = MaterialTheme.typography.titleMedium, color = Color.White)
         }
     }
 }

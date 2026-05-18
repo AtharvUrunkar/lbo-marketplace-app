@@ -1,15 +1,25 @@
 package com.example.lbo_marketplace.ui.screens.provider
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.lbo_marketplace.auth.AuthViewModel
 
-
+/**
+ * Provider Dashboard with Notifications/Activity Tab.
+ * 
+ * UPDATES:
+ * - Renamed Community to Activity.
+ * - Updated icon to Notifications (Bell).
+ * - Forced Full White Background.
+ */
 @Composable
 fun ProviderDashboard(
     authViewModel: AuthViewModel = viewModel()
@@ -18,8 +28,12 @@ fun ProviderDashboard(
     var selectedTab by remember { mutableStateOf(0) }
 
     Scaffold(
+        containerColor = Color.White, // ✅ FULL BRIGHT WHITE
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = Color.White,
+                tonalElevation = 0.dp
+            ) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
@@ -44,8 +58,8 @@ fun ProviderDashboard(
                 NavigationBarItem(
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
-                    icon = { Icon(Icons.Default.List, contentDescription = "Community") },
-                    label = { Text("Community") }
+                    icon = { Icon(Icons.Default.Notifications, contentDescription = "Activity") }, // ✅ BELL ICON
+                    label = { Text("Activity") } // ✅ RENAMED
                 )
 
                 NavigationBarItem(
@@ -58,7 +72,7 @@ fun ProviderDashboard(
         }
     ) { padding ->
 
-        Box(modifier = Modifier.padding(padding)) {
+        Box(modifier = Modifier.padding(padding).background(Color.White)) {
             when (selectedTab) {
                 0 -> DashboardScreen()
                 1 -> WorkScreen()
