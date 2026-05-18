@@ -1,4 +1,4 @@
-package com.example.lbo_marketplace.ui.screens.provider
+package com.example.lbo_marketplace.ui.screens.user
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -23,25 +23,26 @@ import androidx.compose.ui.unit.sp
 import com.example.lbo_marketplace.R
 
 /**
- * Activity / Notifications Screen for Provider.
+ * Community (Notifications) Screen for User.
  * 
- * FEATURES:
- * - Swipe to Delete (SwipeToDismissBox).
- * - Matches Screenshot Design (Activity).
- * - Latest notifications at the top.
- * - Full white background.
+ * UPDATES:
+ * - Header: Integrated MOVABLE header at the top of the list.
+ * - Guaranteed #FFFFFF background.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CommunityScreen() {
-    // Mock Notifications Data for Provider
+fun CommunityTab(
+    header: @Composable () -> Unit = {}
+) {
+    // Mock Notifications Data
     var notifications by remember {
         mutableStateOf(
             listOf(
-                ProviderNotificationData("1", "Client A", "Booked a new service", "2h", true),
-                ProviderNotificationData("2", "LBO Team", "Your profile has been verified", "5h", true, thumbnail = R.drawable.logo),
-                ProviderNotificationData("3", "Client B", "Left a 5-star review", "1d", false, subText = "Amazing work, highly recommended!"),
-                ProviderNotificationData("4", "LBO System", "Weekly earnings report ready", "2d", false, thumbnail = R.drawable.logo)
+                NotificationData("1", "starryskies23", "Started following you", "1d", true),
+                NotificationData("2", "nebulanomad", "Liked your post", "1d", true, thumbnail = R.drawable.logo),
+                NotificationData("3", "emberecho", "Liked your comment", "2d", true, subText = "Happy birthday!!! 🥳🎉"),
+                NotificationData("4", "lunavoyager", "Started following you", "3d", true),
+                NotificationData("5", "shadowlynx", "Commented on your post", "4d", true, subText = "i'm going in september. what about you?", thumbnail = R.drawable.logo)
             )
         )
     }
@@ -50,16 +51,18 @@ fun CommunityScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .padding(top = 16.dp)
     ) {
+        // ✅ MOVABLE HEADER
+        header()
+
         Text(
-            text = "Activity",
+            text = "Community",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(modifier = Modifier.fillMaxSize().background(Color.White)) {
             items(notifications, key = { it.id }) { item ->
                 val dismissState = rememberSwipeToDismissBoxState()
                 
@@ -88,14 +91,14 @@ fun CommunityScreen() {
                         }
                     }
                 ) {
-                    ProviderNotificationItem(item)
+                    NotificationItem(item)
                 }
             }
         }
     }
 }
 
-data class ProviderNotificationData(
+data class NotificationData(
     val id: String,
     val name: String,
     val action: String,
@@ -106,7 +109,7 @@ data class ProviderNotificationData(
 )
 
 @Composable
-fun ProviderNotificationItem(data: ProviderNotificationData) {
+fun NotificationItem(data: NotificationData) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White
@@ -117,34 +120,16 @@ fun ProviderNotificationItem(data: ProviderNotificationData) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Unread indicator (Red dot)
             if (data.isUnread) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(Color.Red)
-                )
+                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Color.Red))
             } else {
                 Spacer(modifier = Modifier.width(6.dp))
             }
-
             Spacer(modifier = Modifier.width(12.dp))
-
-            // Profile Avatar
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFF0F0F0)),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(0xFFF8F8F8)), contentAlignment = Alignment.Center) {
                 Text(data.name.take(1).uppercase(), fontWeight = FontWeight.Bold)
             }
-
             Spacer(modifier = Modifier.width(12.dp))
-
-            // Text Content
             Column(modifier = Modifier.weight(1f)) {
                 Row {
                     Text(text = data.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -152,33 +137,18 @@ fun ProviderNotificationItem(data: ProviderNotificationData) {
                     Text(text = data.time, color = Color.Gray, fontSize = 14.sp)
                 }
                 Text(text = data.action, color = Color.Gray, fontSize = 14.sp)
-                
                 if (data.subText != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(modifier = Modifier.padding(start = 8.dp)) {
                         Box(modifier = Modifier.matchParentSize().background(Color.Transparent)) {
                            Box(modifier = Modifier.fillMaxHeight().width(2.dp).background(Color(0xFFE0E0E0)))
                         }
-                        Text(
-                            text = data.subText, 
-                            fontSize = 14.sp, 
-                            modifier = Modifier.padding(start = 8.dp),
-                            color = Color.DarkGray
-                        )
+                        Text(text = data.subText, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp), color = Color.DarkGray)
                     }
                 }
             }
-
-            // Thumbnail (Optional)
             if (data.thumbnail != null) {
-                androidx.compose.foundation.Image(
-                    painter = painterResource(id = data.thumbnail),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                androidx.compose.foundation.Image(painter = painterResource(id = data.thumbnail), contentDescription = null, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
             }
         }
     }
