@@ -9,17 +9,29 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 
+/**
+ * Screen to apply as a service provider.
+ * 
+ * FIXES:
+ * - Standardized all buttons to FULL BLACK (#000000).
+ * - Enforced PURE WHITE (#FFFFFF) background.
+ * - Added statusBarsPadding() for safe UI rendering.
+ */
 @Composable
 fun ApplyProviderScreen(
     onSubmit: (
@@ -148,12 +160,16 @@ fun ApplyProviderScreen(
             .verticalScroll(
                 rememberScrollState()
             )
+            .background(Color.White) // ✅ PURE WHITE
+            .statusBarsPadding()
             .padding(16.dp)
     ) {
 
         Text(
             text = "Apply as Service Provider",
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -212,7 +228,9 @@ fun ApplyProviderScreen(
             label = {
                 Text("Full Name")
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, focusedLabelColor = Color.Black)
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -225,7 +243,9 @@ fun ApplyProviderScreen(
             label = {
                 Text("Service Type")
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, focusedLabelColor = Color.Black)
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -238,7 +258,9 @@ fun ApplyProviderScreen(
             label = {
                 Text("Experience")
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, focusedLabelColor = Color.Black)
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -251,7 +273,9 @@ fun ApplyProviderScreen(
             label = {
                 Text("Description")
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, focusedLabelColor = Color.Black)
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -264,11 +288,7 @@ fun ApplyProviderScreen(
             onClick = {
 
                 if (
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
                     getLocation(context) { lat, lng ->
 
@@ -283,10 +303,12 @@ fun ApplyProviderScreen(
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black) // ✅ FULL BLACK
         ) {
 
-            Text("Get Current Location")
+            Text("Get Current Location", fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(10.dp))

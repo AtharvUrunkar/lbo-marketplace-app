@@ -40,6 +40,10 @@ class ProviderViewModel : ViewModel() {
     )
         private set
 
+    // 🔥 LOADING STATE FOR SKELETONS
+    var isLoading by mutableStateOf(false)
+        private set
+
     // =========================================================
     // 🔥 FETCH PROVIDERS
     // =========================================================

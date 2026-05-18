@@ -5,8 +5,26 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.*
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,8 +32,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
+import coil.compose.AsyncImage
+import com.example.lbo_marketplace.R
 import com.example.lbo_marketplace.auth.AuthViewModel
 import com.example.lbo_marketplace.data.repository.CloudinaryRepository
 import com.example.lbo_marketplace.utils.compressImage
@@ -23,16 +52,22 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 
+import java.io.File
+import java.io.FileOutputStream
+
+/**
+ * Profile Screen with finalized, ultra-tight Sharable ID Card layout.
+ */
 @Composable
 fun ProfileTab(
     authViewModel: AuthViewModel,
-    onApplyClick: () -> Unit
+    onApplyClick: () -> Unit,
+    header: @Composable () -> Unit = {}
 ) {
 
     // =========================================================
     // 🔥 USER
     // =========================================================
-
     val user = FirebaseAuth.getInstance().currentUser
 
     val context = LocalContext.current
@@ -314,7 +349,7 @@ fun ProfileTab(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
         // =====================================================
         // 🔥 BECOME PROVIDER BUTTON
