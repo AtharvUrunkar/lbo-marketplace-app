@@ -108,7 +108,10 @@ class ProviderRepository {
 
 
                     verificationDocUrl =
-                        doc.getString("verificationDocUrl") ?: ""
+                        doc.getString("verificationDocUrl") ?: "",
+
+                    rating =
+                        doc.getDouble("rating") ?: 0.0
                 )
             }
 

@@ -76,35 +76,35 @@ fun ServicesTab(
             style = MaterialTheme.typography.titleLarge
         )
 
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // =====================================================
         // 🔥 SEARCH BAR
         // =====================================================
 
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = {
                 searchQuery = it
             },
-                label = {
+            label = {
                 Text(
                     "Search service (e.g. Electrician)"
                 )
             },
-                modifier = Modifier.fillMaxWidth()
-            )
+            modifier = Modifier.fillMaxWidth()
+        )
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // =====================================================
         // 🔥 EMPTY STATE
         // =====================================================
-            // 🔥 FILTER LOGIC
-            val filteredProviders = providers.filter {
-                it.serviceType.contains(searchQuery, ignoreCase = true) || 
-                it.name.contains(searchQuery, ignoreCase = true)
-            }
+        // 🔥 FILTER LOGIC
+        val filteredProviders = providers.filter {
+            it.serviceType.contains(searchQuery, ignoreCase = true) ||
+                    it.name.contains(searchQuery, ignoreCase = true)
+        }
 
         if (filteredProviders.isEmpty()) {
 
@@ -176,62 +176,73 @@ fun ServicesTab(
                                 text = provider.serviceType,
                                 style = MaterialTheme.typography.bodyMedium
                             )
-            if (filteredProviders.isEmpty()) {
-                Text("No providers found")
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(filteredProviders) { provider ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(provider.name, style = MaterialTheme.typography.titleMedium)
-                                Text(provider.serviceType, style = MaterialTheme.typography.bodyMedium)
+                            if (filteredProviders.isEmpty()) {
+                                Text("No providers found")
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    items(filteredProviders) { provider ->
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 6.dp)
+                                        ) {
+                                            Column(modifier = Modifier.padding(16.dp)) {
+                                                Text(
+                                                    provider.name,
+                                                    style = MaterialTheme.typography.titleMedium
+                                                )
+                                                Text(
+                                                    provider.serviceType,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
 
-                            Spacer(
-                                modifier = Modifier.height(6.dp)
-                            )
+                                                Spacer(
+                                                    modifier = Modifier.height(6.dp)
+                                                )
 
-                            // =============================
-                            // 🔥 EXPERIENCE
-                            // =============================
+                                                // =============================
+                                                // 🔥 EXPERIENCE
+                                                // =============================
 
-                            Text(
-                                text = "Experience: ${provider.experience}"
-                            )
+                                                Text(
+                                                    text = "Experience: ${provider.experience}"
+                                                )
 
-                            Spacer(
-                                modifier = Modifier.height(6.dp)
-                            )
+                                                Spacer(
+                                                    modifier = Modifier.height(6.dp)
+                                                )
 
-                            // =============================
-                            // 🔥 DESCRIPTION
-                            // =============================
+                                                // =============================
+                                                // 🔥 DESCRIPTION
+                                                // =============================
 
-                            Text(
-                                text = provider.description
-                            )
+                                                Text(
+                                                    text = provider.description
+                                                )
 
-                            Spacer(
-                                modifier = Modifier.height(16.dp)
-                            )
+                                                Spacer(
+                                                    modifier = Modifier.height(16.dp)
+                                                )
 
-                            // =============================
-                            // 🔥 BOOK BUTTON
-                            // =============================
+                                                // =============================
+                                                // 🔥 BOOK BUTTON
+                                                // =============================
 
-                            Button(
-                                onClick = {
-                                    onBookClick(provider.id)
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
+                                                Button(
+                                                    onClick = {
+                                                        onBookClick(provider.id)
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
 
-                                Text("Book Now")
+                                                    Text("Book Now")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

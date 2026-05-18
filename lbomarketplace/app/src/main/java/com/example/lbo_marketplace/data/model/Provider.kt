@@ -20,5 +20,6 @@ data class Provider(
     val profileImageUrl: String = "",
 
     val verificationDocUrl: String = "",
-    val profileImage: String? = null // 🔥 Added for profile images
+    val profileImage: String? = null, // 🔥 Added for profile images
+    val rating: Double = 0.0 // 🔥 Added for rating
 )

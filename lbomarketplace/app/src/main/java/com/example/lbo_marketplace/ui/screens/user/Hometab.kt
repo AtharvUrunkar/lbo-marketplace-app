@@ -1,8 +1,12 @@
 package com.example.lbo_marketplace.ui.screens.user
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -44,6 +48,8 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import androidx.core.content.ContextCompat
+import androidx.media3.common.util.UnstableApi
 import coil.compose.AsyncImage
 import com.example.lbo_marketplace.R
 import com.example.lbo_marketplace.auth.ProviderViewModel
@@ -88,14 +94,46 @@ fun HomeTab(
         searchQuery = ""
     }
 
+    var userLat by remember { mutableStateOf<Double?>(null) }
+    var userLng by remember { mutableStateOf<Double?>(null) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            getLocation(context) { lat, lng ->
+                userLat = lat
+                userLng = lng
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.fetchProviders()
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            getLocation(context) { lat, lng ->
+                userLat = lat
+                userLng = lng
+            }
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
     }
 
     val filteredProviders = providers.filter {
         it.serviceType.contains(searchQuery, ignoreCase = true) || 
         it.name.contains(searchQuery, ignoreCase = true)
-    }
+    }.sortedWith(
+        compareBy<Provider> { provider ->
+            if (userLat != null && userLng != null) {
+                calculateDistance(userLat!!, userLng!!, provider.latitude, provider.longitude)
+            } else {
+                0f
+            }
+        }.thenByDescending { provider ->
+            provider.rating
+        }
+    )
 
     val bannerItems = remember {
         listOf(
@@ -239,6 +277,7 @@ fun DynamicImage(url: String?, localRes: Int?, title: String) {
     }
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun DynamicVideoPlayer(url: String?, localRes: Int?, isActive: Boolean, onError: () -> Unit, onComplete: () -> Unit) {
     val context = LocalContext.current
@@ -273,7 +312,7 @@ fun TopRatedPopup(providers: List<Provider>, isLoading: Boolean, onClose: () -> 
                 Row(verticalAlignment = Alignment.CenterVertically) { Text("Top Rated Providers", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); IconButton(onClick = onClose) { Icon(Icons.Default.Close, null, tint = Color.Black) } }
                 Spacer(modifier = Modifier.height(16.dp))
                 if (isLoading) { Column { repeat(3) { ProviderSkeleton() } } } 
-                else { LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f)) { items(providers.take(10)) { provider -> ProviderGridCard(provider, onBookClick) } } }
+                else { LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f)) { items(providers.sortedByDescending { it.rating }.take(10)) { provider -> ProviderGridCard(provider, onBookClick) } } }
                 Button(onClick = onClose, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Black), shape = RoundedCornerShape(12.dp)) { Text("Close") }
             }
         }
@@ -322,3 +361,9 @@ fun HomeSearchBar(query: String, onQueryChange: (String) -> Unit) {
 fun EmptySearchState(query: String) { Column(modifier = Modifier.fillMaxWidth().padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("No results for '$query'", style = MaterialTheme.typography.bodyLarge, color = Color.Gray); Text("Try searching for 'Plumber' or 'Electrician'", style = MaterialTheme.typography.bodySmall, color = Color.LightGray) } }
 
 private fun checkNetworkAvailability(context: android.content.Context): Boolean { val connectivityManager = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager; val network = connectivityManager.activeNetwork ?: return false; val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false; return when { activeNetwork.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> true; activeNetwork.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> true; else -> false } }
+
+fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
+    val results = FloatArray(1)
+    android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
+    return results[0]
+}

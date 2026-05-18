@@ -39,9 +39,9 @@ import com.example.lbo_marketplace.auth.ProviderViewModel
 import com.example.lbo_marketplace.booking.BookingViewModel
 import com.example.lbo_marketplace.ui.screens.user.chat.ChatScreen
 import com.google.firebase.auth.FirebaseAuth
-import androidx.compose.ui.platform.LocalContext
-import android.net.Uriimport java.io.File
-import java.io.FileOutputStream
+//import androidx.compose.ui.platform.LocalContext
+//import android.net.Uriimport java.io.File
+//import java.io.FileOutputStream
 
 /**
  * Main User Entry Screen.
