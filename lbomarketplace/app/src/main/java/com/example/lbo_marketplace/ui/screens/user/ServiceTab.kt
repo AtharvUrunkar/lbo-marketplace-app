@@ -1,12 +1,19 @@
 package com.example.lbo_marketplace.ui.screens.user
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -17,221 +24,118 @@ fun ServicesTab(
     onBookClick: (String) -> Unit,
     viewModel: ProviderViewModel = viewModel()
 ) {
-
-    // =========================================================
-    // 🔥 PROVIDERS
-    // =========================================================
-
     val providers = viewModel.providers
-
-    // =========================================================
-    // 🔥 SEARCH QUERY
-    // =========================================================
-
-    var searchQuery by remember {
-        mutableStateOf("")
-    }
-
-    // =========================================================
-    // 🔥 FETCH PROVIDERS
-    // =========================================================
+    var searchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.fetchProviders()
     }
 
-    // =========================================================
-    // 🔥 FILTERED PROVIDERS
-    // =========================================================
-
     val filteredProviders = providers.filter {
-
-        it.serviceType.contains(
-            searchQuery,
-            ignoreCase = true
-        ) ||
-
-                it.name.contains(
-                    searchQuery,
-                    ignoreCase = true
-                )
+        it.serviceType.contains(searchQuery, ignoreCase = true) ||
+        it.name.contains(searchQuery, ignoreCase = true)
     }
-
-    // =========================================================
-    // 🔥 UI
-    // =========================================================
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.White)
             .padding(16.dp)
     ) {
-
-        // =====================================================
-        // 🔥 TITLE
-        // =====================================================
-
         Text(
             text = "Available Providers",
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
         )
 
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // =====================================================
-        // 🔥 SEARCH BAR
-        // =====================================================
-
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = {
-                searchQuery = it
-            },
-                label = {
-                Text(
-                    "Search service (e.g. Electrician)"
-                )
-            },
-                modifier = Modifier.fillMaxWidth()
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search service (e.g. Electrician)") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Black,
+                focusedLabelColor = Color.Black
             )
+        )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-        // =====================================================
-        // 🔥 EMPTY STATE
-        // =====================================================
-            // 🔥 FILTER LOGIC
-            val filteredProviders = providers.filter {
-                it.serviceType.contains(searchQuery, ignoreCase = true) || 
-                it.name.contains(searchQuery, ignoreCase = true)
-            }
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (filteredProviders.isEmpty()) {
-
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-
-                Text(
-                    text = "No providers found"
-                )
+                Text(text = "No providers found", color = Color.Gray)
             }
-
         } else {
-
-            // =================================================
-            // 🔥 PROVIDER LIST
-            // =================================================
-
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-
                 items(filteredProviders) { provider ->
-
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp)
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-
                         Column(
                             modifier = Modifier.padding(16.dp)
                         ) {
-
-                            // =============================
-                            // 🔥 PROVIDER IMAGE
-                            // =============================
-
-                            AsyncImage(
-                                model = provider.profileImageUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(180.dp)
-                            )
-
-                            Spacer(
-                                modifier = Modifier.height(12.dp)
-                            )
-
-                            // =============================
-                            // 🔥 PROVIDER NAME
-                            // =============================
-
+                            val imageUrl = provider.profileImage ?: provider.profileImageUrl
+                            if (!imageUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = imageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(180.dp)
+                                        .clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
                             Text(
                                 text = provider.name,
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
                             )
-
-                            Spacer(
-                                modifier = Modifier.height(4.dp)
-                            )
-
-                            // =============================
-                            // 🔥 SERVICE TYPE
-                            // =============================
-
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = provider.serviceType,
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.DarkGray
                             )
-            if (filteredProviders.isEmpty()) {
-                Text("No providers found")
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(filteredProviders) { provider ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(provider.name, style = MaterialTheme.typography.titleMedium)
-                                Text(provider.serviceType, style = MaterialTheme.typography.bodyMedium)
-
-                            Spacer(
-                                modifier = Modifier.height(6.dp)
-                            )
-
-                            // =============================
-                            // 🔥 EXPERIENCE
-                            // =============================
-
-                            Text(
-                                text = "Experience: ${provider.experience}"
-                            )
-
-                            Spacer(
-                                modifier = Modifier.height(6.dp)
-                            )
-
-                            // =============================
-                            // 🔥 DESCRIPTION
-                            // =============================
-
-                            Text(
-                                text = provider.description
-                            )
-
-                            Spacer(
-                                modifier = Modifier.height(16.dp)
-                            )
-
-                            // =============================
-                            // 🔥 BOOK BUTTON
-                            // =============================
-
+                            if (provider.experience.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Experience: ${provider.experience}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray
+                                )
+                            }
+                            if (provider.description.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = provider.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
                             Button(
-                                onClick = {
-                                    onBookClick(provider.id)
-                                },
-                                modifier = Modifier.fillMaxWidth()
+                                onClick = { onBookClick(provider.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-
-                                Text("Book Now")
+                                Text("Book Now", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
