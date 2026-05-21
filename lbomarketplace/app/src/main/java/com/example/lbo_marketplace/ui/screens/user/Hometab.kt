@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -321,16 +322,53 @@ fun TopRatedPopup(providers: List<Provider>, isLoading: Boolean, onClose: () -> 
 
 @Composable
 fun ProviderGridCard(provider: Provider, onBookClick: (String) -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp).background(Color.White)) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .background(Color.White)
+            .clickable { onBookClick(provider.id) }
+    ) {
         Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF8F8F8))) {
             if (provider.profileImage != null) { AsyncImage(model = provider.profileImage, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) } 
             else { InitialsAvatar(name = provider.name) }
+            
+            // Rating Badge Overlay
+            if (provider.rating > 0.0) {
+                Surface(
+                    color = Color.White.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(topStart = 16.dp, bottomEnd = 16.dp),
+                    modifier = Modifier.align(Alignment.TopStart)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Star, contentDescription = "Rating", tint = Color(0xFFFFC107), modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = String.format(java.util.Locale.US, "%.1f", provider.rating),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                }
+            }
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(text = provider.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
         Text(text = provider.serviceType, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, maxLines = 1)
         Spacer(modifier = Modifier.height(8.dp))
-        Button(onClick = { onBookClick(provider.id) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Black)) { Text("Book Now", fontSize = 12.sp) }
+        Button(
+            onClick = { onBookClick(provider.id) }, 
+            modifier = Modifier.fillMaxWidth(), 
+            shape = RoundedCornerShape(8.dp), 
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp), 
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+        ) { 
+            Text("View Profile", fontSize = 12.sp) 
+        }
     }
 }
 

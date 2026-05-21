@@ -55,8 +55,9 @@ fun UserMainScreen(
     authViewModel: AuthViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    var showApplyScreen by remember { mutableStateOf(false) }
     var selectedProviderId by remember { mutableStateOf<String?>(null) }
+    var viewingProviderId by remember { mutableStateOf<String?>(null) }
+    var showApplyScreen by remember { mutableStateOf(false) }
     var showChatScreen by remember { mutableStateOf(false) }
 
     var menuExpanded by remember { mutableStateOf(false) }
@@ -88,20 +89,47 @@ fun UserMainScreen(
         return
     }
 
+    if (viewingProviderId != null) {
+        val provider = providerViewModel.providers.find { it.id == viewingProviderId }
+        if (provider != null) {
+            ProviderDetailsScreen(
+                provider = provider,
+                onBack = { viewingProviderId = null },
+                onBookNow = {
+                    selectedProviderId = viewingProviderId
+                    viewingProviderId = null
+                }
+            )
+            return
+        }
+    }
+
     if (selectedProviderId != null) {
-        BookingScreen(
+        val selectedProvider = providerViewModel.providers.find { it.id == selectedProviderId }
+        val pName = selectedProvider?.name ?: "Provider"
+        
+        BookingFormScreen(
             providerId = selectedProviderId!!,
+            providerName = pName,
+            customerName = user?.displayName ?: "User",
+            customerPhone = user?.phoneNumber ?: "",
             onBack = { selectedProviderId = null },
-            onSubmit = { problem, address ->
+            onSubmit = { cName, cPhone, title, desc, address, pDate, pTime ->
                 user?.let {
                     bookingViewModel.book(
-                        userId = it.uid,
+                        customerId = it.uid,
+                        customerName = cName,
+                        customerPhone = cPhone,
                         providerId = selectedProviderId!!,
-                        problem = problem,
-                        address = address
+                        providerName = pName,
+                        problemTitle = title,
+                        problemDescription = desc,
+                        address = address,
+                        preferredDate = pDate,
+                        preferredTime = pTime,
+                        onSuccess = { selectedProviderId = null }
                     )
                 }
-                selectedProviderId = null
             }
         )
         return
@@ -167,9 +195,9 @@ fun UserMainScreen(
                 label = ""
             ) { targetTab ->
                 when (targetTab) {
-                    0 -> HomeTab(onBookClick = { selectedProviderId = it })
+                    0 -> HomeTab(onBookClick = { viewingProviderId = it })
                     1 -> CommunityTab(header = { GlobalHeader() })
-                    2 -> BookingTab(header = { GlobalHeader() })
+                    2 -> Column(modifier = Modifier.fillMaxSize()) { GlobalHeader(); MyBookingsScreen(bookingViewModel, providerViewModel) }
                     3 -> ProfileTab(authViewModel = authViewModel, onApplyClick = { showApplyScreen = true }, header = { GlobalHeader() })
                 }
             }

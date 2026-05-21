@@ -1,6 +1,5 @@
 package com.example.lbo_marketplace.booking
 
-
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -16,32 +15,87 @@ class BookingViewModel : ViewModel() {
     var state by mutableStateOf("")
         private set
 
+    var customerBookings by mutableStateOf<List<Map<String, Any>>>(emptyList())
+        private set
+
+    var providerBookings by mutableStateOf<List<Map<String, Any>>>(emptyList())
+        private set
+
     fun book(
-        userId: String,
+        customerId: String,
+        customerName: String,
+        customerPhone: String,
         providerId: String,
-        problem: String,
-        address: String
+        providerName: String,
+        problemTitle: String,
+        problemDescription: String,
+        address: String,
+        preferredDate: String,
+        preferredTime: String,
+        onSuccess: () -> Unit
     ) {
-
         viewModelScope.launch {
-
-            state = "Loading..." // 🔥 UX improvement
+            state = "Loading..."
 
             val data = hashMapOf(
-                "userId" to userId,
+                "customerId" to customerId,
+                "customerName" to customerName,
+                "customerPhone" to customerPhone,
                 "providerId" to providerId,
-                "problem" to problem,
+                "providerName" to providerName,
+                "problemTitle" to problemTitle,
+                "problemDescription" to problemDescription,
                 "address" to address,
+                "preferredDate" to preferredDate,
+                "preferredTime" to preferredTime,
                 "status" to "PENDING",
-                "price" to 300
+                "createdAt" to System.currentTimeMillis()
             )
 
             val result = repo.createBooking(data)
 
             state = result.fold(
-                onSuccess = { it },
+                onSuccess = { 
+                    onSuccess()
+                    it 
+                },
                 onFailure = { it.message ?: "Error" }
             )
+        }
+    }
+
+    fun loadCustomerBookings(customerId: String) {
+        viewModelScope.launch {
+            val result = repo.getCustomerBookings(customerId)
+            customerBookings = result.getOrElse { emptyList() }
+        }
+    }
+
+    fun loadProviderBookings(providerId: String) {
+        viewModelScope.launch {
+            val result = repo.getProviderBookings(providerId)
+            providerBookings = result.getOrElse { emptyList() }
+        }
+    }
+
+    fun updateBookingStatus(bookingId: String, status: String, providerId: String, customerId: String? = null) {
+        viewModelScope.launch {
+            repo.updateBookingStatus(bookingId, status)
+            loadProviderBookings(providerId)
+            customerId?.let { loadCustomerBookings(it) }
+        }
+    }
+
+    fun completeBookingWithFeedback(
+        bookingId: String,
+        providerId: String,
+        customerId: String,
+        rating: Float,
+        feedback: String
+    ) {
+        viewModelScope.launch {
+            repo.completeBookingWithFeedback(bookingId, providerId, rating, feedback)
+            loadCustomerBookings(customerId)
         }
     }
 }

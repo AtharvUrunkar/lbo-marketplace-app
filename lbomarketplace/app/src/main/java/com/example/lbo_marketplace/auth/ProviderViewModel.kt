@@ -63,6 +63,52 @@ class ProviderViewModel : ViewModel() {
     }
 
     // =========================================================
+    // 🔥 CURRENT PROVIDER PROFILE (FOR DASHBOARD/EDIT)
+    // =========================================================
+
+    var currentProviderProfile by mutableStateOf<Provider?>(null)
+        private set
+
+    fun fetchProviderProfile(userId: String) {
+        viewModelScope.launch {
+            val result = repo.getProviderDetails(userId)
+            currentProviderProfile = result.getOrNull()
+        }
+    }
+
+    fun updateProviderProfile(
+        userId: String,
+        name: String,
+        serviceType: String,
+        description: String,
+        experience: String,
+        latitude: Double,
+        longitude: Double,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val updates = mapOf(
+                "name" to name,
+                "serviceType" to serviceType,
+                "description" to description,
+                "experience" to experience,
+                "latitude" to latitude,
+                "longitude" to longitude
+            )
+            val result = repo.updateProviderDetails(userId, updates)
+            if (result.isSuccess) {
+                // Refresh local profile state
+                fetchProviderProfile(userId)
+                // Also refresh global providers list so users see it immediately if they are in the same session
+                fetchProviders() 
+                onComplete(true, "Profile updated successfully")
+            } else {
+                onComplete(false, result.exceptionOrNull()?.message ?: "Update failed")
+            }
+        }
+    }
+
+    // =========================================================
     // 🔥 FILE SIZE CHECK
     // =========================================================
 

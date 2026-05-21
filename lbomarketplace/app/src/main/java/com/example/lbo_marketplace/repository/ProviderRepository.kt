@@ -122,4 +122,45 @@ class ProviderRepository {
             Result.failure(e)
         }
     }
+
+    // =========================================================
+    // 🔥 FETCH SINGLE PROVIDER DETAILS
+    // =========================================================
+
+    suspend fun getProviderDetails(userId: String): Result<Provider> {
+        return try {
+            val doc = db.collection("provider_requests").document(userId).get().await()
+            if (!doc.exists()) {
+                return Result.failure(Exception("Provider profile not found"))
+            }
+
+            val provider = Provider(
+                id = doc.id,
+                name = doc.getString("name") ?: "",
+                serviceType = doc.getString("serviceType") ?: "",
+                description = doc.getString("description") ?: "",
+                experience = doc.getString("experience") ?: "",
+                latitude = doc.getDouble("latitude") ?: 0.0,
+                longitude = doc.getDouble("longitude") ?: 0.0,
+                verificationDocUrl = doc.getString("verificationDocUrl") ?: "",
+                rating = doc.getDouble("rating") ?: 0.0
+            )
+            Result.success(provider)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // =========================================================
+    // 🔥 UPDATE PROVIDER DETAILS
+    // =========================================================
+
+    suspend fun updateProviderDetails(userId: String, updates: Map<String, Any>): Result<String> {
+        return try {
+            db.collection("provider_requests").document(userId).update(updates).await()
+            Result.success("Profile updated successfully")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

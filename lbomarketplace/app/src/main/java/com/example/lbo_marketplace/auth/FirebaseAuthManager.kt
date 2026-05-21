@@ -51,7 +51,7 @@ class FirebaseAuthManager {
             val role = snapshot.getString("role")
                 ?: return Result.failure(Exception("Role missing"))
 
-                        Result.success(uid to role)
+            Result.success(uid to role)
 
         } catch (e: Exception) {
             Result.failure(e)

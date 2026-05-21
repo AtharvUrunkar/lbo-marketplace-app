@@ -106,6 +106,9 @@ dependencies {
 
         // Firestore
         implementation("com.google.firebase:firebase-firestore-ktx")
+        
+        // FCM Cloud Messaging
+        implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("androidx.compose.foundation:foundation:1.5.4")
     implementation("com.google.android.gms:play-services-location:21.0.1")
 
