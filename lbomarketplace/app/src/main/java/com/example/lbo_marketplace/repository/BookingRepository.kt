@@ -14,6 +14,25 @@ class BookingRepository {
             val bookingId = docRef.id
             val bookingData = data.toMutableMap()
             bookingData["bookingId"] = bookingId
+
+            // Robust Self-Healing: Fetch provider email and actual UID to store in booking
+            val inputProviderId = data["providerId"] as? String ?: ""
+            if (inputProviderId.isNotEmpty()) {
+                try {
+                    val pDoc = db.collection("provider_requests").document(inputProviderId).get().await()
+                    if (pDoc.exists()) {
+                        val actualUid = pDoc.getString("userId") ?: inputProviderId
+                        val pEmail = pDoc.getString("email") ?: ""
+                        bookingData["providerUid"] = actualUid
+                        if (pEmail.isNotEmpty()) {
+                            bookingData["providerEmail"] = pEmail
+                        }
+                    }
+                } catch (e: Exception) {
+                    // ignore fallback
+                }
+            }
+
             docRef.set(bookingData).await()
             Result.success("Booking Created")
         } catch (e: Exception) {
@@ -37,13 +56,48 @@ class BookingRepository {
 
     suspend fun getProviderBookings(providerId: String): Result<List<Map<String, Any>>> {
         return try {
-            val snapshot = db.collection("bookings")
-                .whereEqualTo("providerId", providerId)
-                .get().await()
+            // Resolve provider email for email-based fallback query
+            var providerEmail = ""
+            try {
+                val userDoc = db.collection("users").document(providerId).get().await()
+                providerEmail = userDoc.getString("email") ?: ""
+            } catch (e: Exception) {
+                // ignore
+            }
+            if (providerEmail.isEmpty()) {
+                try {
+                    val reqDoc = db.collection("provider_requests").document(providerId).get().await()
+                    providerEmail = reqDoc.getString("email") ?: ""
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
 
-            val bookings = snapshot.documents.mapNotNull { it.data }
+            // 1. Query by providerId (standard UID or random approved ID)
+            val query1 = db.collection("bookings")
+                .whereEqualTo("providerId", providerId)
+                .get().await().documents.mapNotNull { it.data }
+
+            // 2. Query by resolved providerUid field (authentic UID fallback)
+            val query2 = db.collection("bookings")
+                .whereEqualTo("providerUid", providerId)
+                .get().await().documents.mapNotNull { it.data }
+
+            // 3. Query by providerEmail field (email fallback)
+            val query3 = if (providerEmail.isNotEmpty()) {
+                db.collection("bookings")
+                    .whereEqualTo("providerEmail", providerEmail)
+                    .get().await().documents.mapNotNull { it.data }
+            } else {
+                emptyList()
+            }
+
+            // Merge queries, deduplicate by bookingId, and sort by createdAt descending
+            val mergedBookings = (query1 + query2 + query3)
+                .distinctBy { it["bookingId"] as? String ?: it.hashCode().toString() }
                 .sortedByDescending { it["createdAt"] as? Long ?: 0L }
-            Result.success(bookings)
+
+            Result.success(mergedBookings)
         } catch (e: Exception) {
             Result.failure(e)
         }

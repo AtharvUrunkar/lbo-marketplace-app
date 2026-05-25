@@ -65,18 +65,20 @@ fun ProfileTab(
     var isSharing by remember { mutableStateOf(false) }
     var profileImageUrl by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
+    var userName by remember { mutableStateOf("") }
 
-    val name = user?.displayName ?: "User Name"
+    val name = userName.ifBlank { user?.displayName?.ifBlank { null } ?: "User Name" }
     val email = user?.email ?: "user@mail.com"
     val address = "123, Marketplace Street, LBO City"
     val contact = "+91 1234567890"
 
-    // 🔥 FETCH USER PROFILE IMAGE
+    // 🔥 FETCH USER PROFILE IMAGE & DETAILS
     LaunchedEffect(Unit) {
         user?.uid?.let { uid ->
             FirebaseFirestore.getInstance().collection("users").document(uid).get()
                 .addOnSuccessListener { document ->
                     profileImageUrl = document.getString("profileImageUrl") ?: ""
+                    userName = document.getString("name") ?: ""
                 }
         }
     }

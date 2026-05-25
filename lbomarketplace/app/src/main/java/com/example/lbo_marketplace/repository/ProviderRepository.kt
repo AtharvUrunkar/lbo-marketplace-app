@@ -27,32 +27,18 @@ class ProviderRepository {
         return try {
 
             val data = hashMapOf(
-
                 "userId" to userId,
-
                 "email" to email,
-
                 "name" to name,
-
                 "serviceType" to serviceType,
-
                 "description" to description,
-
                 "experience" to experience,
-
                 "latitude" to latitude,
-
                 "longitude" to longitude,
-
-                // 🔥 CLOUDINARY URLS
-
                 "verificationDocUrl" to verificationDocUrl,
-
-                // 🔥 STATUS
                 "status" to "PENDING",
-
-                // 🔥 TIMESTAMP
-                "createdAt" to System.currentTimeMillis()
+                "createdAt" to System.currentTimeMillis(),
+                "rating" to 0.0
             )
 
             db.collection("provider_requests")
@@ -60,12 +46,9 @@ class ProviderRepository {
                 .set(data)
                 .await()
 
-            Result.success(
-                "Application submitted successfully"
-            )
+            Result.success("Application submitted successfully")
 
         } catch (e: Exception) {
-
             Result.failure(e)
         }
     }
@@ -74,51 +57,45 @@ class ProviderRepository {
     // 🔥 FETCH APPROVED PROVIDERS
     // =========================================================
 
-    suspend fun getApprovedProviders():
-            Result<List<Provider>> {
-
+    suspend fun getApprovedProviders(): Result<List<Provider>> {
         return try {
-
             val snapshot = db.collection("provider_requests")
                 .whereEqualTo("status", "APPROVED")
                 .get()
                 .await()
 
             val providers = snapshot.documents.mapNotNull { doc ->
+                var pImage = doc.getString("profileImageUrl")
+                if (pImage.isNullOrBlank()) {
+                    pImage = doc.getString("profileImage")
+                }
+                if (pImage.isNullOrBlank()) {
+                    try {
+                        val userDoc = db.collection("users").document(doc.id).get().await()
+                        pImage = userDoc.getString("profileImageUrl")
+                    } catch (e: Exception) {
+                        // ignore if user doc does not exist
+                    }
+                }
 
                 Provider(
-                    id = doc.id,
-
+                    id = doc.getString("userId") ?: doc.id,
                     name = doc.getString("name") ?: "",
-
-                    serviceType =
-                        doc.getString("serviceType") ?: "",
-
-                    description =
-                        doc.getString("description") ?: "",
-
-                    experience =
-                        doc.getString("experience") ?: "",
-
-                    latitude =
-                        doc.getDouble("latitude") ?: 0.0,
-
-                    longitude =
-                        doc.getDouble("longitude") ?: 0.0,
-
-
-                    verificationDocUrl =
-                        doc.getString("verificationDocUrl") ?: "",
-
-                    rating =
-                        doc.getDouble("rating") ?: 0.0
+                    serviceType = doc.getString("serviceType") ?: "",
+                    description = doc.getString("description") ?: "",
+                    experience = doc.getString("experience") ?: "",
+                    latitude = doc.getDouble("latitude") ?: 0.0,
+                    longitude = doc.getDouble("longitude") ?: 0.0,
+                    verificationDocUrl = doc.getString("verificationDocUrl") ?: "",
+                    profileImageUrl = pImage ?: "",
+                    profileImage = pImage,
+                    rating = doc.getDouble("rating") ?: 0.0
                 )
             }
 
             Result.success(providers)
 
         } catch (e: Exception) {
-
             Result.failure(e)
         }
     }
@@ -134,8 +111,21 @@ class ProviderRepository {
                 return Result.failure(Exception("Provider profile not found"))
             }
 
+            var pImage = doc.getString("profileImageUrl")
+            if (pImage.isNullOrBlank()) {
+                pImage = doc.getString("profileImage")
+            }
+            if (pImage.isNullOrBlank()) {
+                try {
+                    val userDoc = db.collection("users").document(userId).get().await()
+                    pImage = userDoc.getString("profileImageUrl")
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
+
             val provider = Provider(
-                id = doc.id,
+                id = doc.getString("userId") ?: doc.id,
                 name = doc.getString("name") ?: "",
                 serviceType = doc.getString("serviceType") ?: "",
                 description = doc.getString("description") ?: "",
@@ -143,6 +133,8 @@ class ProviderRepository {
                 latitude = doc.getDouble("latitude") ?: 0.0,
                 longitude = doc.getDouble("longitude") ?: 0.0,
                 verificationDocUrl = doc.getString("verificationDocUrl") ?: "",
+                profileImageUrl = pImage ?: "",
+                profileImage = pImage,
                 rating = doc.getDouble("rating") ?: 0.0
             )
             Result.success(provider)

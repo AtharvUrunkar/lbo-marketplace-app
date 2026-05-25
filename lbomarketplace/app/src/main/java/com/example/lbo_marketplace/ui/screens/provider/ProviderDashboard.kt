@@ -216,17 +216,23 @@ fun ProviderDashboard(
         )
     }
 
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+
     if (showHelpDialog) {
         AlertDialog(
             onDismissRequest = { showHelpDialog = false },
             title = { Text("Help & Support", fontWeight = FontWeight.Bold) },
-            text = { Text("For critical issues or general assistance, please reach out directly to the platform administrators.") },
+            text = { Text("If you have some doubts contact admin or refered person") },
             confirmButton = {
-                TextButton(
-                    onClick = { showHelpDialog = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
-                ) { Text("Close") }
+                Button(
+                    onClick = { 
+                        showHelpDialog = false
+                        uriHandler.openUri("mailto:lbo.org.ask@gmail.com") 
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+                ) { Text("Contact") }
             },
+            dismissButton = { TextButton(onClick = { showHelpDialog = false }, colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)) { Text("Close") } },
             shape = RoundedCornerShape(24.dp),
             containerColor = Color.White
         )

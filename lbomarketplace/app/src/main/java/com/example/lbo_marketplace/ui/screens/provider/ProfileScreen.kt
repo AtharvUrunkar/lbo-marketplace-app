@@ -71,6 +71,7 @@ fun ProviderProfileScreen(
     var profileImageUrl by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
     var isSharing by remember { mutableStateOf(false) }
+    var userName by remember { mutableStateOf("") }
 
     // Edit mode
     var isEditMode by remember { mutableStateOf(false) }
@@ -82,7 +83,7 @@ fun ProviderProfileScreen(
     var editLng by remember { mutableStateOf("") }
 
     val currentProfile = providerViewModel.currentProviderProfile
-    val name = currentProfile?.name ?: user?.displayName ?: "Provider"
+    val name = currentProfile?.name?.ifBlank { null } ?: userName.ifBlank { null } ?: user?.displayName?.ifBlank { null } ?: "Provider"
     val email = user?.email ?: "N/A"
     val serviceType = currentProfile?.serviceType ?: ""
     val experience = currentProfile?.experience ?: ""
@@ -93,6 +94,7 @@ fun ProviderProfileScreen(
             FirebaseFirestore.getInstance().collection("users").document(uid).get()
                 .addOnSuccessListener { doc ->
                     profileImageUrl = doc.getString("profileImageUrl") ?: ""
+                    userName = doc.getString("name") ?: ""
                 }
             providerViewModel.fetchProviderProfile(uid)
         }
@@ -136,6 +138,9 @@ fun ProviderProfileScreen(
                     user?.uid?.let { uid ->
                         FirebaseFirestore.getInstance()
                             .collection("users").document(uid)
+                            .update("profileImageUrl", imageUrl)
+                        FirebaseFirestore.getInstance()
+                            .collection("provider_requests").document(uid)
                             .update("profileImageUrl", imageUrl)
                     }
                     profileImageUrl = imageUrl
@@ -252,25 +257,7 @@ fun ProviderProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Name is placed DIRECTLY under the profile photo
-            Text(
-                text = name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.Black
-            )
-            if (serviceType.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = serviceType,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Set profile picture button is placed below the Name and Service Type
+            // Set profile picture button is placed above the Name and Service Type to match user
             Button(
                 onClick = { imagePickerLauncher.launch("image/*") },
                 enabled = !isUploading,
@@ -285,6 +272,24 @@ fun ProviderProfileScreen(
                     )
                 else
                     Text("Set Profile Picture", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Name is placed DIRECTLY under the Set Profile Picture button
+            Text(
+                text = name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.Black
+            )
+            if (serviceType.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = serviceType,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray
+                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
