@@ -53,10 +53,11 @@ fun CommunityScreen() {
             .padding(top = 16.dp)
     ) {
         Text(
-            text = "Activity",
+            text = "Community",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            color = Color.Black
         )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {

@@ -78,6 +78,9 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation(project(":shared-kmp"))
 
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
+    
     implementation(platform("androidx.compose:compose-bom:2024.02.01"))
 
     implementation("androidx.compose.ui:ui")
