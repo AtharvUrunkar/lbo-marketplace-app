@@ -112,18 +112,18 @@ fun UserMainScreen(
         BookingScreen(
             providerId = selectedProviderId!!,
             onBack = { selectedProviderId = null },
-            onSubmit = { problem, address ->
+            onSubmit = { problem, address, date, contact ->
                 user?.let {
                     bookingViewModel.book(
                         customerId = it.uid,
                         customerName = it.displayName ?: "User",
-                        customerPhone = it.phoneNumber ?: "",
+                        customerPhone = contact,
                         providerId = selectedProviderId!!,
                         providerName = pName,
                         problemTitle = "Service Request",
                         problemDescription = problem,
                         address = address,
-                        preferredDate = "TBD",
+                        preferredDate = date,
                         preferredTime = "TBD",
                         onSuccess = { selectedProviderId = null }
                     )

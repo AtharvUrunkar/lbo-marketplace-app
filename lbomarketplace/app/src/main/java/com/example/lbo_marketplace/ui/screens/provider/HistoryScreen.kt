@@ -15,14 +15,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.lbo_marketplace.booking.BookingViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 /**
  * Updates Screen (renamed from History).
@@ -143,16 +146,36 @@ fun UpdateBookingItem(
     val rating = (booking["rating"] as? Number)?.toFloat()
     val feedback = booking["feedback"] as? String
 
+    var resolvedCustomerUrl by remember { mutableStateOf("") }
+    val customerId = booking["customerId"] as? String ?: ""
+    LaunchedEffect(customerId) {
+        if (customerId.isNotEmpty()) {
+            val cachedUrl = com.example.lbo_marketplace.utils.UserProfileCache.getProfileImage(customerId)
+            if (cachedUrl != null) {
+                resolvedCustomerUrl = cachedUrl
+            } else {
+                FirebaseFirestore.getInstance().collection("users").document(customerId).get()
+                    .addOnSuccessListener { doc ->
+                        val url = doc.getString("profileImageUrl") ?: ""
+                        resolvedCustomerUrl = url
+                        com.example.lbo_marketplace.utils.UserProfileCache.putProfileImage(customerId, url)
+                    }
+            }
+        }
+    }
+
     val statusBg = when (status) {
         "PENDING" -> Color(0xFFFFF9C4)     // Soft yellow
         "CONFIRMED" -> Color(0xFFC8E6C9)   // Soft green
         "COMPLETED" -> Color(0xFFBBDEFB)   // Soft blue
+        "WITHDRAWN" -> Color(0xFFE0E0E0)   // Soft gray
         else -> Color(0xFFFFCDD2)          // Soft red
     }
     val statusText = when (status) {
         "PENDING" -> Color(0xFFFBC02D)
         "CONFIRMED" -> Color(0xFF388E3C)
         "COMPLETED" -> Color(0xFF1976D2)
+        "WITHDRAWN" -> Color(0xFF616161)
         else -> Color(0xFFD32F2F)
     }
 
@@ -177,7 +200,16 @@ fun UpdateBookingItem(
                             .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.Gray)
+                        if (resolvedCustomerUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = resolvedCustomerUrl,
+                                contentDescription = "Customer Profile",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = Color.Gray)
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {

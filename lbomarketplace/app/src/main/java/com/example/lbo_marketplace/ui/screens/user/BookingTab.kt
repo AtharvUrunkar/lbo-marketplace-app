@@ -19,13 +19,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.lbo_marketplace.booking.BookingViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun BookingTab(
@@ -99,7 +102,14 @@ fun BookingTab(
                     items(bookings) { booking ->
                         CustomerBookingCard(
                             booking = booking,
-                            onCompleteClick = { selectedBookingForFeedback = booking }
+                            onCompleteClick = { selectedBookingForFeedback = booking },
+                            onWithdrawClick = {
+                                val bId = booking["bookingId"] as? String
+                                val pId = booking["providerId"] as? String ?: ""
+                                if (bId != null && currentUser != null) {
+                                    bookingViewModel.updateBookingStatus(bId, "WITHDRAWN", pId, currentUser.uid)
+                                }
+                            }
                         )
                     }
                     item {
@@ -136,7 +146,8 @@ fun BookingTab(
 @Composable
 fun CustomerBookingCard(
     booking: Map<String, Any>,
-    onCompleteClick: () -> Unit
+    onCompleteClick: () -> Unit,
+    onWithdrawClick: () -> Unit
 ) {
     val providerName = booking["providerName"] as? String ?: "Expert Provider"
     val problemTitle = booking["problemTitle"] as? String ?: "Service Request"
@@ -153,7 +164,57 @@ fun CustomerBookingCard(
         "CONFIRMED" -> Color(0xFF388E3C)    // Green
         "COMPLETED" -> Color(0xFF1976D2)    // Blue
         "REJECTED" -> Color(0xFFD32F2F)     // Red
+        "WITHDRAWN" -> Color(0xFF757575)    // Gray (dimmed)
         else -> Color.Gray
+    }
+
+    var resolvedImageUrl by remember { mutableStateOf("") }
+    LaunchedEffect(booking["providerId"], booking["providerUid"]) {
+        val pId = booking["providerId"] as? String ?: ""
+        val pUid = booking["providerUid"] as? String ?: ""
+        
+        // 1. Check local session memory cache first
+        val cachedUrl = if (pUid.isNotEmpty()) {
+            com.example.lbo_marketplace.utils.UserProfileCache.getProfileImage(pUid)
+        } else if (pId.isNotEmpty()) {
+            com.example.lbo_marketplace.utils.UserProfileCache.getProfileImage(pId)
+        } else null
+
+        if (cachedUrl != null) {
+            resolvedImageUrl = cachedUrl
+        } else {
+            // 2. Fetch if not in memory cache
+            if (pUid.isNotEmpty()) {
+                FirebaseFirestore.getInstance().collection("users").document(pUid).get()
+                    .addOnSuccessListener { doc ->
+                        val url = doc.getString("profileImageUrl") ?: ""
+                        if (url.isNotEmpty()) {
+                            resolvedImageUrl = url
+                            com.example.lbo_marketplace.utils.UserProfileCache.putProfileImage(pUid, url)
+                        }
+                    }
+            }
+            if (resolvedImageUrl.isEmpty() && pId.isNotEmpty()) {
+                FirebaseFirestore.getInstance().collection("users").document(pId).get()
+                    .addOnSuccessListener { doc ->
+                        val url = doc.getString("profileImageUrl") ?: ""
+                        if (url.isNotEmpty()) {
+                            resolvedImageUrl = url
+                            com.example.lbo_marketplace.utils.UserProfileCache.putProfileImage(pId, url)
+                        } else {
+                            // Fallback to provider_requests
+                            FirebaseFirestore.getInstance().collection("provider_requests").document(pId).get()
+                                .addOnSuccessListener { doc2 ->
+                                    val url2 = doc2.getString("profileImageUrl") ?: ""
+                                    if (url2.isNotEmpty()) {
+                                        resolvedImageUrl = url2
+                                        com.example.lbo_marketplace.utils.UserProfileCache.putProfileImage(pId, url2)
+                                    }
+                                }
+                        }
+                    }
+            }
+        }
     }
 
     Card(
@@ -176,7 +237,16 @@ fun CustomerBookingCard(
                         .background(Color(0xFFEFEFEF)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Person, contentDescription = "Provider", tint = Color.DarkGray)
+                    if (resolvedImageUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = resolvedImageUrl,
+                            contentDescription = "Provider Profile",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, contentDescription = "Provider", tint = Color.DarkGray)
+                    }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -207,7 +277,7 @@ fun CustomerBookingCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Divider(color = Color(0xFFEEEEEE))
+            HorizontalDivider(color = Color(0xFFEEEEEE))
             Spacer(modifier = Modifier.height(12.dp))
 
             if (problemDesc.isNotEmpty()) {
@@ -247,6 +317,23 @@ fun CustomerBookingCard(
                 )
             }
 
+            if (status == "PENDING") {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onWithdrawClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEEEEE), contentColor = Color.Black)
+                ) {
+                    Text(
+                        text = "Withdraw Request",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             if (status == "CONFIRMED") {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
@@ -267,7 +354,7 @@ fun CustomerBookingCard(
 
             if (status == "COMPLETED" && rating != null) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Divider(color = Color(0xFFEEEEEE))
+                HorizontalDivider(color = Color(0xFFEEEEEE))
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     repeat(5) { index ->
@@ -375,7 +462,7 @@ fun FeedbackRatingDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onSubmit(rating.toFloat(), feedbackText) },
+                onClick = { onSubmit(rating.toFloat(), feedbackText) }, // wait, rating.toFloat() not rating.Lead.toFloat()
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(12.dp)

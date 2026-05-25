@@ -322,6 +322,30 @@ fun TopRatedPopup(providers: List<Provider>, isLoading: Boolean, onClose: () -> 
 
 @Composable
 fun ProviderGridCard(provider: Provider, onBookClick: (String) -> Unit, modifier: Modifier = Modifier) {
+    var resolvedImageUrl by remember(provider.id) { mutableStateOf(provider.profileImageUrl.ifBlank { provider.profileImage ?: "" }) }
+
+    LaunchedEffect(provider.id) {
+        val cachedUrl = com.example.lbo_marketplace.utils.UserProfileCache.getProfileImage(provider.id)
+        if (cachedUrl != null) {
+            resolvedImageUrl = cachedUrl
+        } else if (resolvedImageUrl.isEmpty()) {
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(provider.id)
+                .get()
+                .addOnSuccessListener { doc ->
+                    val url = doc.getString("profileImageUrl") ?: ""
+                    if (url.isNotEmpty()) {
+                        resolvedImageUrl = url
+                        com.example.lbo_marketplace.utils.UserProfileCache.putProfileImage(provider.id, url)
+                    }
+                }
+        } else {
+            // Put initial resolved value into cache so we don't have to query it again
+            com.example.lbo_marketplace.utils.UserProfileCache.putProfileImage(provider.id, resolvedImageUrl)
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -330,8 +354,11 @@ fun ProviderGridCard(provider: Provider, onBookClick: (String) -> Unit, modifier
             .clickable { onBookClick(provider.id) }
     ) {
         Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF8F8F8))) {
-            if (provider.profileImage != null) { AsyncImage(model = provider.profileImage, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) } 
-            else { InitialsAvatar(name = provider.name) }
+            if (resolvedImageUrl.isNotEmpty()) { 
+                AsyncImage(model = resolvedImageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) 
+            } else { 
+                InitialsAvatar(name = provider.name) 
+            }
             
             // Rating Badge Overlay
             if (provider.rating > 0.0) {

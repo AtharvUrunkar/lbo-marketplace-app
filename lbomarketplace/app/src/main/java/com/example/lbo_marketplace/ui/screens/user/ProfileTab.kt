@@ -66,11 +66,15 @@ fun ProfileTab(
     var profileImageUrl by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
     var userName by remember { mutableStateOf("") }
+    var userAddress by remember { mutableStateOf("") }
+    var userPhone by remember { mutableStateOf("") }
+    var lastProfileUpdate by remember { mutableStateOf(0L) }
+    var showEditDialog by remember { mutableStateOf(false) }
 
     val name = userName.ifBlank { user?.displayName?.ifBlank { null } ?: "User Name" }
     val email = user?.email ?: "user@mail.com"
-    val address = "123, Marketplace Street, LBO City"
-    val contact = "+91 1234567890"
+    val address = userAddress.ifBlank { "No address added" }
+    val contact = userPhone.ifBlank { "No phone added" }
 
     // 🔥 FETCH USER PROFILE IMAGE & DETAILS
     LaunchedEffect(Unit) {
@@ -79,6 +83,9 @@ fun ProfileTab(
                 .addOnSuccessListener { document ->
                     profileImageUrl = document.getString("profileImageUrl") ?: ""
                     userName = document.getString("name") ?: ""
+                    userAddress = document.getString("address") ?: ""
+                    userPhone = document.getString("phone") ?: ""
+                    lastProfileUpdate = document.getLong("lastProfileUpdate") ?: 0L
                 }
         }
     }
@@ -203,6 +210,17 @@ fun ProfileTab(
 
             // 3. Information Section
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.Black)
+                    TextButton(onClick = { showEditDialog = true }) {
+                        Text("Edit", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 ProfileInfoItem(icon = Icons.Default.LocationOn, label = "ADDRESS", value = address)
                 Spacer(modifier = Modifier.height(24.dp))
                 ProfileInfoItem(icon = Icons.Default.Phone, label = "CONTACT NO", value = contact)
@@ -219,6 +237,96 @@ fun ProfileTab(
             }
             Spacer(modifier = Modifier.height(60.dp))
         }
+    }
+
+    if (showEditDialog) {
+        var editNameInput by remember { mutableStateOf(userName) }
+        var editPhoneInput by remember { mutableStateOf(userPhone) }
+        var editAddressInput by remember { mutableStateOf(userAddress) }
+
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Edit Profile Info", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editNameInput,
+                        onValueChange = { editNameInput = it },
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, unfocusedBorderColor = Color.LightGray, focusedLabelColor = Color.Black)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = editPhoneInput,
+                        onValueChange = { editPhoneInput = it },
+                        label = { Text("Contact No") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, unfocusedBorderColor = Color.LightGray, focusedLabelColor = Color.Black)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = editAddressInput,
+                        onValueChange = { editAddressInput = it },
+                        label = { Text("Address") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, unfocusedBorderColor = Color.LightGray, focusedLabelColor = Color.Black)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // Cooldown Check
+                        val cooldownMs = 72 * 60 * 60 * 1000L
+                        val now = System.currentTimeMillis()
+                        if (now - lastProfileUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                            val hours = remainingMs / (1000 * 60 * 60)
+                            val minutes = (remainingMs % (1000 * 60 * 60)) / (1000 * 60)
+                            val tryAfterTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(java.util.Date(lastProfileUpdate + cooldownMs))
+                            Toast.makeText(context, "Try after $tryAfterTime ($hours hrs, $minutes mins remaining)", Toast.LENGTH_LONG).show()
+                            return@Button
+                        }
+
+                        user?.uid?.let { uid ->
+                            val updateTime = System.currentTimeMillis()
+                            val data = mapOf(
+                                "name" to editNameInput,
+                                "phone" to editPhoneInput,
+                                "address" to editAddressInput,
+                                "lastProfileUpdate" to updateTime
+                            )
+                            FirebaseFirestore.getInstance().collection("users").document(uid).update(data)
+                                .addOnSuccessListener {
+                                    userName = editNameInput
+                                    userPhone = editPhoneInput
+                                    userAddress = editAddressInput
+                                    lastProfileUpdate = updateTime
+                                    showEditDialog = false
+                                    Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                                }
+                                .addOnFailureListener {
+                                    Toast.makeText(context, "Update failed: ${it.message}", Toast.LENGTH_SHORT).show()
+                                }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+                ) {
+                    Text("Save", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }, colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(24.dp)
+        )
     }
 }
 

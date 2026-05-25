@@ -72,6 +72,7 @@ fun ProviderProfileScreen(
     var isUploading by remember { mutableStateOf(false) }
     var isSharing by remember { mutableStateOf(false) }
     var userName by remember { mutableStateOf("") }
+    var lastProfileUpdate by remember { mutableStateOf(0L) }
 
     // Edit mode
     var isEditMode by remember { mutableStateOf(false) }
@@ -95,6 +96,7 @@ fun ProviderProfileScreen(
                 .addOnSuccessListener { doc ->
                     profileImageUrl = doc.getString("profileImageUrl") ?: ""
                     userName = doc.getString("name") ?: ""
+                    lastProfileUpdate = doc.getLong("lastProfileUpdate") ?: 0L
                 }
             providerViewModel.fetchProviderProfile(uid)
         }
@@ -299,7 +301,7 @@ fun ProviderProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-            ) {
+                ) {
                 ProviderProfileInfoItem(
                     icon = Icons.Default.Build,
                     label = "SERVICE TYPE",
@@ -346,6 +348,18 @@ fun ProviderProfileScreen(
                             TextButton(
                                 onClick = {
                                     if (isEditMode) {
+                                        // Cooldown Check
+                                        val cooldownMs = 72 * 60 * 60 * 1000L
+                                        val now = System.currentTimeMillis()
+                                        if (now - lastProfileUpdate < cooldownMs) {
+                                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                                            val hours = remainingMs / (1000 * 60 * 60)
+                                            val minutes = (remainingMs % (1000 * 60 * 60)) / (1000 * 60)
+                                            val tryAfterTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(java.util.Date(lastProfileUpdate + cooldownMs))
+                                            Toast.makeText(context, "Try after $tryAfterTime ($hours hrs, $minutes mins remaining)", Toast.LENGTH_LONG).show()
+                                            return@TextButton
+                                        }
+
                                         user?.uid?.let { uid ->
                                             providerViewModel.updateProviderProfile(
                                                 userId = uid,
@@ -356,8 +370,15 @@ fun ProviderProfileScreen(
                                                 latitude = editLat.toDoubleOrNull() ?: 0.0,
                                                 longitude = editLng.toDoubleOrNull() ?: 0.0
                                             ) { success, msg ->
+                                                if (success) {
+                                                    val updateTime = System.currentTimeMillis()
+                                                    lastProfileUpdate = updateTime
+                                                    // Save update time in both users and provider_requests collections!
+                                                    FirebaseFirestore.getInstance().collection("users").document(uid).update("lastProfileUpdate", updateTime)
+                                                    FirebaseFirestore.getInstance().collection("provider_requests").document(uid).update("lastProfileUpdate", updateTime)
+                                                    isEditMode = false
+                                                }
                                                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                                if (success) isEditMode = false
                                             }
                                         }
                                     } else {
