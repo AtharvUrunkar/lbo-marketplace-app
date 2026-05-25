@@ -39,9 +39,6 @@ import com.example.lbo_marketplace.auth.ProviderViewModel
 import com.example.lbo_marketplace.booking.BookingViewModel
 import com.example.lbo_marketplace.ui.screens.user.chat.ChatScreen
 import com.google.firebase.auth.FirebaseAuth
-//import androidx.compose.ui.platform.LocalContext
-//import android.net.Uriimport java.io.File
-//import java.io.FileOutputStream
 
 /**
  * Main User Entry Screen.
@@ -49,6 +46,7 @@ import com.google.firebase.auth.FirebaseAuth
  * FIXES:
  * - Header Consistency: Unified statusBarsPadding for BOTH sticky and movable headers so they match perfectly.
  * - Updated Deprecated Icons (List/Chat).
+ * - Resolved Missing Screens Compilation Issues (Mapped BookingScreen & BookingTab correctly).
  */
 @Composable
 fun UserMainScreen(
@@ -56,7 +54,6 @@ fun UserMainScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     var selectedProviderId by remember { mutableStateOf<String?>(null) }
-    var viewingProviderId by remember { mutableStateOf<String?>(null) }
     var showApplyScreen by remember { mutableStateOf(false) }
     var showChatScreen by remember { mutableStateOf(false) }
 
@@ -89,44 +86,26 @@ fun UserMainScreen(
         return
     }
 
-    if (viewingProviderId != null) {
-        val provider = providerViewModel.providers.find { it.id == viewingProviderId }
-        if (provider != null) {
-            ProviderDetailsScreen(
-                provider = provider,
-                onBack = { viewingProviderId = null },
-                onBookNow = {
-                    selectedProviderId = viewingProviderId
-                    viewingProviderId = null
-                }
-            )
-            return
-        }
-    }
-
     if (selectedProviderId != null) {
         val selectedProvider = providerViewModel.providers.find { it.id == selectedProviderId }
         val pName = selectedProvider?.name ?: "Provider"
         
-        BookingFormScreen(
+        BookingScreen(
             providerId = selectedProviderId!!,
-            providerName = pName,
-            customerName = user?.displayName ?: "User",
-            customerPhone = user?.phoneNumber ?: "",
             onBack = { selectedProviderId = null },
-            onSubmit = { cName, cPhone, title, desc, address, pDate, pTime ->
+            onSubmit = { problem, address ->
                 user?.let {
                     bookingViewModel.book(
                         customerId = it.uid,
-                        customerName = cName,
-                        customerPhone = cPhone,
+                        customerName = it.displayName ?: "User",
+                        customerPhone = it.phoneNumber ?: "",
                         providerId = selectedProviderId!!,
                         providerName = pName,
-                        problemTitle = title,
-                        problemDescription = desc,
+                        problemTitle = "Service Request",
+                        problemDescription = problem,
                         address = address,
-                        preferredDate = pDate,
-                        preferredTime = pTime,
+                        preferredDate = "TBD",
+                        preferredTime = "TBD",
                         onSuccess = { selectedProviderId = null }
                     )
                 }
@@ -195,9 +174,9 @@ fun UserMainScreen(
                 label = ""
             ) { targetTab ->
                 when (targetTab) {
-                    0 -> HomeTab(onBookClick = { viewingProviderId = it })
+                    0 -> HomeTab(onBookClick = { selectedProviderId = it })
                     1 -> CommunityTab(header = { GlobalHeader() })
-                    2 -> Column(modifier = Modifier.fillMaxSize()) { GlobalHeader(); MyBookingsScreen(bookingViewModel, providerViewModel) }
+                    2 -> BookingTab(bookingViewModel = bookingViewModel, header = { GlobalHeader() })
                     3 -> ProfileTab(authViewModel = authViewModel, onApplyClick = { showApplyScreen = true }, header = { GlobalHeader() })
                 }
             }

@@ -2,9 +2,12 @@ package com.example.lbo_marketplace.ui.navigation
 
 import android.os.Build.VERSION.SDK_INT
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,6 +34,7 @@ import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.sp
 import androidx.media3.common.PlaybackException
 
 /**
@@ -93,7 +97,7 @@ fun AppNavigation(viewModel: AuthViewModel = viewModel()) {
 
             // STATE: ProviderPending -> Shows review screen.
             is AuthState.ProviderPending -> {
-                PendingReviewScreen()
+                PendingReviewScreen(onLogout = { viewModel.logout() })
             }
 
             // DEFAULT fallback.
@@ -226,10 +230,12 @@ fun VideoLoader(videoResId: Int, onError: () -> Unit) {
  * Renders a premium "Under Review" screen for Service Providers.
  */
 @Composable
-fun PendingReviewScreen() {
+fun PendingReviewScreen(onLogout: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.White)
+            .statusBarsPadding()
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -238,19 +244,40 @@ fun PendingReviewScreen() {
             text = "⏳",
             style = MaterialTheme.typography.displayLarge
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = "Your application is under review",
             style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.Black
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = "Our team is verifying your credentials. Please check back later.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            color = Color.DarkGray,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
+        Spacer(modifier = Modifier.height(48.dp))
+        Button(
+            onClick = onLogout,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Black,
+                contentColor = Color.White
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+        ) {
+            Text(
+                text = "Logout",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
