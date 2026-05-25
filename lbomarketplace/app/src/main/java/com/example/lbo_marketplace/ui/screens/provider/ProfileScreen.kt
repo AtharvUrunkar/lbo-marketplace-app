@@ -58,6 +58,7 @@ import java.io.FileOutputStream
  */
 @Composable
 fun ProviderProfileScreen(
+    header: @Composable () -> Unit,
     authViewModel: AuthViewModel,
     providerViewModel: ProviderViewModel = viewModel()
 ) {
@@ -185,7 +186,9 @@ fun ProviderProfileScreen(
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.statusBarsPadding())
+            // Render Header
+            header()
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // ── Profile photo + share FAB ──
@@ -249,7 +252,25 @@ fun ProviderProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Set profile picture button
+            // Name is placed DIRECTLY under the profile photo
+            Text(
+                text = name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.Black
+            )
+            if (serviceType.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = serviceType,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Set profile picture button is placed below the Name and Service Type
             Button(
                 onClick = { imagePickerLauncher.launch("image/*") },
                 enabled = !isUploading,
@@ -264,23 +285,6 @@ fun ProviderProfileScreen(
                     )
                 else
                     Text("Set Profile Picture", fontWeight = FontWeight.Bold)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.Black
-            )
-            if (serviceType.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = serviceType,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
-                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -511,7 +515,7 @@ private fun createProviderProfileBitmap(
     canvas.drawColor(android.graphics.Color.WHITE)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    // Avatar circle
+    // Avatar circle at y = 200f (center), radius = 150f, bottom is at 350f
     paint.color = android.graphics.Color.parseColor("#F4F4F4")
     canvas.drawCircle(width / 2f, 200f, 150f, paint)
     paint.color = android.graphics.Color.LTGRAY
@@ -520,14 +524,20 @@ private fun createProviderProfileBitmap(
     val initial = name.take(1).uppercase()
     canvas.drawText(initial, (width - paint.measureText(initial)) / 2, 245f, paint)
 
-    // Motto
+    // Name is drawn DIRECTLY under the avatar circle (e.g. at y = 430f)
     paint.color = android.graphics.Color.BLACK
-    paint.textSize = 50f
+    paint.textSize = 80f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    canvas.drawText(name, (width - paint.measureText(name)) / 2, 430f, paint)
+
+    // Motto / Verified text drawn under the name
+    paint.color = android.graphics.Color.parseColor("#6C63FF")
+    paint.textSize = 45f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     val motto = "LBO Verified Service Provider 🛠️"
-    canvas.drawText(motto, (width - paint.measureText(motto)) / 2, 415f, paint)
+    canvas.drawText(motto, (width - paint.measureText(motto)) / 2, 510f, paint)
 
-    // Logo
+    // Logo drawn under the motto
     val logo = try { BitmapFactory.decodeResource(context.resources, R.drawable.logo) } catch (e: Exception) { null }
     if (logo != null) {
         val s = 120; val out = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
@@ -535,37 +545,33 @@ private fun createProviderProfileBitmap(
         c2.drawCircle(s / 2f, s / 2f, s / 2f, p2)
         p2.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
         c2.drawBitmap(logo, null, Rect(0, 0, s, s), p2)
-        canvas.drawBitmap(out, (width - s) / 2f, 460f, paint)
+        canvas.drawBitmap(out, (width - s) / 2f, 570f, paint)
     }
 
-    // Name
-    paint.color = android.graphics.Color.BLACK
-    paint.textSize = 80f
-    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText(name, (width - paint.measureText(name)) / 2, 670f, paint)
-
-    // Details box
+    // Details box starting slightly lower
     paint.color = android.graphics.Color.parseColor("#F8F8F8")
-    canvas.drawRoundRect(150f, 750f, 930f, 1150f, 40f, 40f, paint)
+    canvas.drawRoundRect(150f, 760f, 930f, 1180f, 40f, 40f, paint)
     paint.textSize = 40f
     paint.color = android.graphics.Color.GRAY
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText("SERVICE", 200f, 820f, paint)
+    canvas.drawText("SERVICE", 200f, 830f, paint)
     paint.color = android.graphics.Color.BLACK
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-    canvas.drawText(serviceType, 200f, 870f, paint)
+    canvas.drawText(serviceType, 200f, 880f, paint)
+    
     paint.color = android.graphics.Color.GRAY
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText("EXPERIENCE", 200f, 970f, paint)
+    canvas.drawText("EXPERIENCE", 200f, 950f, paint)
     paint.color = android.graphics.Color.BLACK
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-    canvas.drawText(experience, 200f, 1020f, paint)
+    canvas.drawText(experience, 200f, 1000f, paint)
+    
     paint.color = android.graphics.Color.GRAY
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText("EMAIL", 200f, 1100f, paint)
+    canvas.drawText("EMAIL", 200f, 1070f, paint)
     paint.color = android.graphics.Color.BLACK
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-    canvas.drawText(email, 200f, 1140f, paint)
+    canvas.drawText(email, 200f, 1120f, paint)
 
     // Footer
     paint.color = android.graphics.Color.BLACK

@@ -23,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +40,9 @@ import com.example.lbo_marketplace.auth.ProviderViewModel
 import com.example.lbo_marketplace.booking.BookingViewModel
 import com.example.lbo_marketplace.ui.screens.user.chat.ChatScreen
 import com.google.firebase.auth.FirebaseAuth
+import coil.compose.AsyncImage
+import java.io.File
+import java.io.FileOutputStream
 
 /**
  * Main User Entry Screen.
@@ -46,7 +50,6 @@ import com.google.firebase.auth.FirebaseAuth
  * FIXES:
  * - Header Consistency: Unified statusBarsPadding for BOTH sticky and movable headers so they match perfectly.
  * - Updated Deprecated Icons (List/Chat).
- * - Resolved Missing Screens Compilation Issues (Mapped BookingScreen & BookingTab correctly).
  */
 @Composable
 fun UserMainScreen(
@@ -54,6 +57,7 @@ fun UserMainScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     var selectedProviderId by remember { mutableStateOf<String?>(null) }
+    var viewingProviderId by remember { mutableStateOf<String?>(null) }
     var showApplyScreen by remember { mutableStateOf(false) }
     var showChatScreen by remember { mutableStateOf(false) }
 
@@ -84,6 +88,21 @@ fun UserMainScreen(
         BackHandler(onBack = { showChatScreen = false })
         ChatScreen(onBack = { showChatScreen = false })
         return
+    }
+
+    if (viewingProviderId != null) {
+        val provider = providerViewModel.providers.find { it.id == viewingProviderId }
+        if (provider != null) {
+            ProviderDetailsScreen(
+                provider = provider,
+                onBack = { viewingProviderId = null },
+                onBookNow = {
+                    selectedProviderId = viewingProviderId
+                    viewingProviderId = null
+                }
+            )
+            return
+        }
     }
 
     if (selectedProviderId != null) {
@@ -174,7 +193,7 @@ fun UserMainScreen(
                 label = ""
             ) { targetTab ->
                 when (targetTab) {
-                    0 -> HomeTab(onBookClick = { selectedProviderId = it })
+                    0 -> HomeTab(onBookClick = { viewingProviderId = it })
                     1 -> CommunityTab(header = { GlobalHeader() })
                     2 -> BookingTab(bookingViewModel = bookingViewModel, header = { GlobalHeader() })
                     3 -> ProfileTab(authViewModel = authViewModel, onApplyClick = { showApplyScreen = true }, header = { GlobalHeader() })
@@ -234,4 +253,81 @@ fun Header(onMenuClick: () -> Unit, menuExpanded: Boolean, onDismissMenu: () -> 
 @Composable
 fun GlobalMenuDialog(title: String, content: String, onClose: () -> Unit) {
     AlertDialog(onDismissRequest = onClose, title = { Text(title, fontWeight = FontWeight.Bold) }, text = { Text(content) }, confirmButton = { TextButton(onClick = onClose, colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)) { Text("Close") } }, shape = RoundedCornerShape(24.dp), containerColor = Color.White)
+}
+
+@Composable
+fun ProviderDetailsScreen(
+    provider: com.example.lbo_marketplace.data.model.Provider,
+    onBack: () -> Unit,
+    onBookNow: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .statusBarsPadding()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.Black)
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF8F8F8)),
+            contentAlignment = Alignment.Center
+        ) {
+            val imageUrl = provider.profileImage ?: provider.profileImageUrl
+            if (!imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                val initials = provider.name.take(2).uppercase()
+                Text(initials, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = Color.LightGray)
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(provider.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = Color.Black)
+        Text(provider.serviceType, style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Star, contentDescription = "Rating", tint = Color(0xFFFFC107), modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("${provider.rating} / 5.0", fontWeight = FontWeight.Bold, color = Color.Black)
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider(color = Color(0xFFEEEEEE))
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            Text("EXPERIENCE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
+            Text(provider.experience, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("ABOUT", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
+            Text(provider.description.ifBlank { "No description provided." }, style = MaterialTheme.typography.bodyMedium, color = Color.DarkGray)
+        }
+        
+        Button(
+            onClick = onBookNow,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Book Now", fontWeight = FontWeight.Bold)
+        }
+    }
 }

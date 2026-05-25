@@ -1,14 +1,22 @@
 package com.example.lbo_marketplace.ui.screens.provider
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.view.ViewGroup
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -16,16 +24,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,460 +47,531 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import coil.compose.AsyncImage
 import com.example.lbo_marketplace.R
-import com.example.lbo_marketplace.auth.AuthViewModel
-import com.example.lbo_marketplace.booking.BookingViewModel
-import com.google.firebase.auth.FirebaseAuth
+import com.example.lbo_marketplace.auth.ProviderViewModel
+import com.example.lbo_marketplace.data.model.Provider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Provider Header (mirrors user Header)
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-fun ProviderHeader(
-    onMenuClick: () -> Unit,
-    menuExpanded: Boolean,
-    onDismissMenu: () -> Unit,
-    onAboutClick: () -> Unit,
-    onFAQClick: () -> Unit,
-    onHelpClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Spacer(modifier = Modifier.width(48.dp))
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(50.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = "Logo",
-                modifier = Modifier.height(40.dp),
-                contentScale = ContentScale.Fit
-            )
-        }
-        Box(contentAlignment = Alignment.TopEnd) {
-            IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu")
-            }
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = onDismissMenu,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.background(Color.White)
-            ) {
-                DropdownMenuItem(
-                    text = { Text("About", fontWeight = FontWeight.Bold) },
-                    onClick = { onDismissMenu(); onAboutClick() }
-                )
-                DropdownMenuItem(
-                    text = { Text("FAQ", fontWeight = FontWeight.Bold) },
-                    onClick = { onDismissMenu(); onFAQClick() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Help", color = Color(0xFF6C63FF), fontWeight = FontWeight.Bold) },
-                    onClick = { onDismissMenu(); onHelpClick() }
-                )
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Provider Home / Dashboard Tab
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-fun ProviderHomeTab(
-    bookingViewModel: BookingViewModel = viewModel()
-) {
-    val currentUser = FirebaseAuth.getInstance().currentUser
-    val scrollState = rememberScrollState()
-    val uriHandler = LocalUriHandler.current
-
-    // Header menu state
-    var menuExpanded by remember { mutableStateOf(false) }
-    var showAboutDialog by remember { mutableStateOf(false) }
-    var showFAQDialog by remember { mutableStateOf(false) }
-    var showHelpDialog by remember { mutableStateOf(false) }
-    var showTopRatedPopup by remember { mutableStateOf(false) }
-
-    // Load provider bookings once
-    LaunchedEffect(currentUser) {
-        currentUser?.uid?.let { bookingViewModel.loadProviderBookings(it) }
-    }
-
-    val allBookings = bookingViewModel.providerBookings
-    val pendingBookings = allBookings.filter {
-        it["status"] == "PENDING" || it["status"] == "CONFIRMED"
-    }
-
-    val bannerItems = remember {
-        listOf(
-            ProviderBannerItem("Grow Your Business", localImageRes = R.drawable.logo),
-            ProviderBannerItem("Serve Your Community", localVideoRes = R.raw.logo, isVideo = true),
-            ProviderBannerItem("Top Rated Providers", localImageRes = R.drawable.logo)
-        )
-    }
-
-    // ── Sticky top-bar ──
-    Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
-        ProviderHeader(
-            onMenuClick = { menuExpanded = true },
-            menuExpanded = menuExpanded,
-            onDismissMenu = { menuExpanded = false },
-            onAboutClick = { showAboutDialog = true },
-            onFAQClick = { showFAQDialog = true },
-            onHelpClick = { showHelpDialog = true }
-        )
-
-        // ── Scrollable content ──
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp)
-        ) {
-            // Marketing Banner
-            ProviderBannerSlider(bannerItems)
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Top Rated CTA (same style as user)
-            Button(
-                onClick = { showTopRatedPopup = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFD9D9D9),
-                    contentColor = Color.Black
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-            ) {
-                Text("TOP RATED OF THIS WEEK", fontWeight = FontWeight.ExtraBold)
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Welcome / Greeting
-            Text(
-                "👷 Active Requests",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "Review and manage incoming bookings from customers.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.Gray
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Pending/Active Booking Cards
-            if (pendingBookings.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📋", fontSize = 52.sp)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            "No active requests right now",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "New booking requests will appear here.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
-                        )
-                    }
-                }
-            } else {
-                pendingBookings.forEach { booking ->
-                    UpdatesBookingCard(
-                        booking = booking,
-                        onAccept = {
-                            val bookingId = booking["bookingId"] as? String
-                            val providerId = booking["providerId"] as? String
-                            val customerId = booking["customerId"] as? String
-                            if (bookingId != null && providerId != null) {
-                                bookingViewModel.updateBookingStatus(bookingId, "CONFIRMED", providerId, customerId)
-                            }
-                        },
-                        onReject = {
-                            val bookingId = booking["bookingId"] as? String
-                            val providerId = booking["providerId"] as? String
-                            val customerId = booking["customerId"] as? String
-                            if (bookingId != null && providerId != null) {
-                                bookingViewModel.updateBookingStatus(bookingId, "REJECTED", providerId, customerId)
-                            }
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-        }
-    }
-
-    // ── Dialogs ──
-    if (showTopRatedPopup) {
-        ProviderTopRatedPopup(onClose = { showTopRatedPopup = false })
-    }
-    if (showAboutDialog) ProviderMenuDialog(
-        "About LBO",
-        "LBO – Together We Grow 🤝\n\nConnecting local experts with our community seamlessly.",
-        { showAboutDialog = false }
-    )
-    if (showFAQDialog) ProviderMenuDialog(
-        "FAQ",
-        "Q: How do I get bookings?\nA: Customers will find and book you.\n\nQ: How are payments handled?\nA: Customers pay you directly.",
-        { showFAQDialog = false }
-    )
-    if (showHelpDialog) {
-        AlertDialog(
-            onDismissRequest = { showHelpDialog = false },
-            title = { Text("Help & Support", fontWeight = FontWeight.Bold) },
-            text = { Text("If you have doubts, contact the admin or a referred person.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showHelpDialog = false
-                        uriHandler.openUri("mailto:lbo.org.ask@gmail.com")
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
-                ) { Text("Contact") }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showHelpDialog = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
-                ) { Text("Close") }
-            },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = Color.White
-        )
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Top-Rated Popup (provider context)
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-fun ProviderTopRatedPopup(onClose: () -> Unit) {
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = Color.White,
-            tonalElevation = 0.dp
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Top Rated This Week",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Black)
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Keep delivering quality work to earn a spot here!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-                // Illustrative tip card
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F8F8))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("⭐ How to get top rated?", fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("• Respond to bookings quickly\n• Deliver quality service\n• Collect 5-star reviews from customers", color = Color.DarkGray, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Button(
-                    onClick = onClose,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-                    shape = RoundedCornerShape(12.dp)
-                ) { Text("Close") }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProviderMenuDialog(title: String, content: String, onClose: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onClose,
-        title = { Text(title, fontWeight = FontWeight.Bold) },
-        text = { Text(content) },
-        confirmButton = {
-            TextButton(
-                onClick = onClose,
-                colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
-            ) { Text("Close") }
-        },
-        shape = RoundedCornerShape(24.dp),
-        containerColor = Color.White
-    )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Banner
-// ─────────────────────────────────────────────────────────────────────────────
-
 data class ProviderBannerItem(
     val title: String,
+    val imageUrl: String? = null,
+    val videoUrl: String? = null,
     val localImageRes: Int? = null,
     val localVideoRes: Int? = null,
     val isVideo: Boolean = false
 )
 
 @Composable
+fun DashboardScreen(
+    header: @Composable () -> Unit,
+    viewModel: ProviderViewModel = viewModel()
+) {
+    val context = LocalContext.current
+    val providers = viewModel.providers
+    val isLoading = viewModel.isLoading
+    var searchQuery by remember { mutableStateOf("") }
+    var showTopRatedPopup by remember { mutableStateOf(false) }
+    var selectedDetailProvider by remember { mutableStateOf<Provider?>(null) }
+
+    val isOnline = remember { checkNetworkAvailabilityLocal(context) }
+    val scrollState = rememberScrollState()
+
+    BackHandler(enabled = searchQuery.isNotEmpty()) {
+        searchQuery = ""
+    }
+
+    var userLat by remember { mutableStateOf<Double?>(null) }
+    var userLng by remember { mutableStateOf<Double?>(null) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            getLocationLocal(context) { lat, lng ->
+                userLat = lat
+                userLng = lng
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchProviders()
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            getLocationLocal(context) { lat, lng ->
+                userLat = lat
+                userLng = lng
+            }
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    val filteredProviders = providers.filter {
+        it.serviceType.contains(searchQuery, ignoreCase = true) || 
+        it.name.contains(searchQuery, ignoreCase = true)
+    }.sortedWith(
+        compareBy<Provider> { provider ->
+            if (userLat != null && userLng != null) {
+                calculateDistanceLocal(userLat!!, userLng!!, provider.latitude, provider.longitude)
+            } else {
+                0f
+            }
+        }.thenByDescending { provider ->
+            provider.rating
+        }
+    )
+
+    val bannerItems = remember {
+        listOf(
+            ProviderBannerItem("Expert Services", localImageRes = R.drawable.logo),
+            ProviderBannerItem("Quality Work", localVideoRes = R.raw.logo, isVideo = true),
+            ProviderBannerItem("Top Providers", localImageRes = R.drawable.logo)
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        // Render custom header at the top
+        header()
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .verticalScroll(scrollState)
+        ) {
+            if (!isOnline) { ProviderOfflineWarning() }
+
+            ProviderHomeSearchBar(query = searchQuery, onQueryChange = { searchQuery = it })
+
+            AnimatedContent(
+                targetState = searchQuery.isEmpty(),
+                transitionSpec = { fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400)) },
+                label = "ViewTransition"
+            ) { isHomeView ->
+                if (isHomeView) {
+                    Column {
+                        if (isLoading && bannerItems.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(20.dp)).localShimmerEffect())
+                        } else {
+                            ProviderBannerSlider(bannerItems)
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Button(
+                            onClick = { showTopRatedPopup = true },
+                            modifier = Modifier.fillMaxWidth().height(60.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD9D9D9), contentColor = Color.Black),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                        ) {
+                            Text(text = "TOP RATED OF THIS WEEK", fontWeight = FontWeight.ExtraBold)
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Text("👋 Welcome", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        if (isLoading) {
+                            Column {
+                                Box(modifier = Modifier.fillMaxWidth(0.7f).height(20.dp).localShimmerEffect())
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Box(modifier = Modifier.fillMaxWidth(0.9f).height(20.dp).localShimmerEffect())
+                            }
+                        } else {
+                            Text(
+                                "Find the best local service providers in your area. Quick, reliable, and rated by users like you.",
+                                style = MaterialTheme.typography.bodyLarge, color = Color.Gray
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(40.dp))
+                    }
+                } else {
+                    Column(modifier = Modifier.heightIn(max = 2000.dp)) {
+                        Text(text = if (isLoading) "Searching..." else "Found ${filteredProviders.size} results", style = MaterialTheme.typography.titleMedium, color = Color.Black)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        if (isLoading) {
+                            Column { repeat(3) { ProviderSkeletonCard() } }
+                        } else if (filteredProviders.isEmpty()) {
+                            ProviderEmptySearchState(searchQuery)
+                        } else {
+                            ProviderFlowRow(modifier = Modifier.fillMaxWidth(), mainAxisSpacing = 16.dp, crossAxisSpacing = 16.dp) {
+                                filteredProviders.forEach { provider ->
+                                    ProviderGridCard(provider = provider, onDetailClick = { selectedDetailProvider = it }, modifier = Modifier.fillMaxWidth(0.45f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showTopRatedPopup) {
+        ProviderTopRatedPopup(
+            providers = providers,
+            isLoading = isLoading,
+            onClose = { showTopRatedPopup = false },
+            onDetailClick = { provider ->
+                showTopRatedPopup = false
+                selectedDetailProvider = provider
+            }
+        )
+    }
+
+    if (selectedDetailProvider != null) {
+        ProviderDetailPopup(
+            provider = selectedDetailProvider!!,
+            onClose = { selectedDetailProvider = null }
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ProviderFlowRow(
+    modifier: Modifier = Modifier,
+    mainAxisSpacing: androidx.compose.ui.unit.Dp = 0.dp,
+    crossAxisSpacing: androidx.compose.ui.unit.Dp = 0.dp,
+    content: @Composable () -> Unit
+) {
+    androidx.compose.foundation.layout.FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(mainAxisSpacing),
+        verticalArrangement = Arrangement.spacedBy(crossAxisSpacing),
+        maxItemsInEachRow = 2,
+        content = { content() }
+    )
+}
+
+@Composable
+fun ProviderOfflineWarning() {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.WifiOff, contentDescription = null, tint = Color.Red)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("You are offline. Some content may not load.", style = MaterialTheme.typography.bodySmall, color = Color.Red)
+        }
+    }
+}
+
+@Composable
 fun ProviderBannerSlider(items: List<ProviderBannerItem>) {
     if (items.isEmpty()) return
     val pagerState = rememberPagerState(pageCount = { items.size })
     val coroutineScope = rememberCoroutineScope()
-
     LaunchedEffect(pagerState.currentPage) {
-        val flipDelay = if (items[pagerState.currentPage].isVideo) 10000L else 3500L
+        val currentItem = items[pagerState.currentPage]
+        val flipDelay = if (currentItem.isVideo) 10000L else 3500L
         delay(flipDelay)
-        coroutineScope.launch {
-            pagerState.animateScrollToPage((pagerState.currentPage + 1) % items.size)
-        }
+        coroutineScope.launch { pagerState.animateScrollToPage((pagerState.currentPage + 1) % items.size) }
     }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(210.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White)
-    ) {
+    Box(modifier = Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(20.dp)).background(Color.White)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             val item = items[page]
             var videoFailed by remember { mutableStateOf(false) }
-            if (item.isVideo && !videoFailed && item.localVideoRes != null) {
-                ProviderVideoBanner(
-                    localRes = item.localVideoRes,
-                    isActive = pagerState.currentPage == page,
-                    onError = { videoFailed = true }
-                )
+            if (item.isVideo && !videoFailed) {
+                ProviderDynamicVideoPlayer(url = item.videoUrl, localRes = item.localVideoRes, isActive = pagerState.currentPage == page, onError = { videoFailed = true }, onComplete = { coroutineScope.launch { pagerState.animateScrollToPage((page + 1) % items.size) } })
             } else {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Image(
-                        painter = painterResource(id = item.localImageRes ?: R.drawable.logo),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    Text(
-                        text = item.title,
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(24.dp),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
+                ProviderDynamicImage(url = item.imageUrl, localRes = item.localImageRes, title = item.title)
             }
         }
-        // Page dots
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 12.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            repeat(items.size) { i ->
-                Box(
-                    modifier = Modifier
-                        .padding(4.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (pagerState.currentPage == i) Color.Black
-                            else Color.Black.copy(alpha = 0.2f)
-                        )
-                        .size(10.dp)
-                        .clickable {
-                            coroutineScope.launch { pagerState.animateScrollToPage(i) }
-                        }
-                )
+        Row(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp), horizontalArrangement = Arrangement.Center) {
+            repeat(items.size) { iteration ->
+                Box(modifier = Modifier.padding(4.dp).clip(CircleShape).background(if (pagerState.currentPage == iteration) Color.Black else Color.Black.copy(alpha = 0.2f)).size(10.dp).clickable { coroutineScope.launch { pagerState.animateScrollToPage(iteration) } })
             }
         }
     }
 }
 
+@Composable
+fun ProviderDynamicImage(url: String?, localRes: Int?, title: String) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (url != null) { AsyncImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop, error = painterResource(id = localRes ?: R.drawable.logo)) } 
+        else { Image(painter = painterResource(id = localRes ?: R.drawable.logo), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        Text(text = title, modifier = Modifier.align(Alignment.CenterStart).padding(24.dp), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White)
+    }
+}
+
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-fun ProviderVideoBanner(localRes: Int, isActive: Boolean, onError: () -> Unit) {
+fun ProviderDynamicVideoPlayer(url: String?, localRes: Int?, isActive: Boolean, onError: () -> Unit, onComplete: () -> Unit) {
     val context = LocalContext.current
+    var isReady by remember { mutableStateOf(false) }
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            val uri = android.net.Uri.parse("android.resource://${context.packageName}/$localRes")
-            setMediaItem(MediaItem.fromUri(uri))
-            playWhenReady = true
-            prepare()
-            addListener(object : Player.Listener {
-                override fun onPlayerError(error: androidx.media3.common.PlaybackException) { onError() }
+            val mediaItem = when {
+                url != null -> MediaItem.fromUri(Uri.parse(url))
+                localRes != null -> MediaItem.fromUri(Uri.parse("android.resource://${context.packageName}/${localRes}"))
+                else -> { onError(); return@apply }
+            }
+            setMediaItem(mediaItem); playWhenReady = true; prepare()
+            addListener(object : Player.Listener { 
+                override fun onPlaybackStateChanged(state: Int) { if (state == Player.STATE_READY) isReady = true; if (state == Player.STATE_ENDED) onComplete() }
+                override fun onPlayerError(error: PlaybackException) { onError() } 
             })
         }
     }
     LaunchedEffect(isActive) { if (isActive) exoPlayer.play() else exoPlayer.pause() }
     DisposableEffect(Unit) { onDispose { exoPlayer.release() } }
-    AndroidView(
-        factory = {
-            PlayerView(it).apply {
-                player = exoPlayer
-                useController = false
-                setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_ZOOM)
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                setBackgroundColor(android.graphics.Color.WHITE)
+    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+        if (!isReady) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(30.dp)) } }
+        AndroidView(factory = { PlayerView(it).apply { player = exoPlayer; useController = false; resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT; layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT); setBackgroundColor(android.graphics.Color.WHITE) } }, modifier = Modifier.fillMaxSize())
+    }
+}
+
+@Composable
+fun ProviderTopRatedPopup(providers: List<Provider>, isLoading: Boolean, onClose: () -> Unit, onDetailClick: (Provider) -> Unit) {
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(modifier = Modifier.fillMaxSize().padding(20.dp), shape = RoundedCornerShape(28.dp), color = Color.White, tonalElevation = 0.dp) {
+            Column(modifier = Modifier.padding(20.dp).background(Color.White)) {
+                Row(verticalAlignment = Alignment.CenterVertically) { Text("Top Rated Providers", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); IconButton(onClick = onClose) { Icon(Icons.Default.Close, null, tint = Color.Black) } }
+                Spacer(modifier = Modifier.height(16.dp))
+                if (isLoading) { Column { repeat(3) { ProviderSkeletonCard() } } } 
+                else { LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f)) { items(providers.sortedByDescending { it.rating }.take(10)) { provider -> ProviderGridCard(provider, onDetailClick) } } }
+                Button(onClick = onClose, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Black), shape = RoundedCornerShape(12.dp)) { Text("Close") }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProviderGridCard(provider: Provider, onDetailClick: (Provider) -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .background(Color.White)
+            .clickable { onDetailClick(provider) }
+    ) {
+        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF8F8F8))) {
+            val imageUrl = provider.profileImage ?: provider.profileImageUrl
+            if (!imageUrl.isNullOrBlank()) { AsyncImage(model = imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) } 
+            else { ProviderInitialsAvatar(name = provider.name) }
+            
+            // Rating Badge Overlay
+            if (provider.rating > 0.0) {
+                Surface(
+                    color = Color.White.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(topStart = 16.dp, bottomEnd = 16.dp),
+                    modifier = Modifier.align(Alignment.TopStart)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Star, contentDescription = "Rating", tint = Color(0xFFFFC107), modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = String.format(java.util.Locale.US, "%.1f", provider.rating),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = provider.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(text = provider.serviceType, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, maxLines = 1)
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = { onDetailClick(provider) }, 
+            modifier = Modifier.fillMaxWidth(), 
+            shape = RoundedCornerShape(8.dp), 
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp), 
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+        ) { 
+            Text("View Profile", fontSize = 12.sp) 
+        }
+    }
+}
+
+@Composable
+fun ProviderDetailPopup(provider: Provider, onClose: () -> Unit) {
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.Black)
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF8F8F8)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val imageUrl = provider.profileImage ?: provider.profileImageUrl
+                    if (!imageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        val initials = provider.name.take(2).uppercase()
+                        Text(initials, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = Color.LightGray)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(provider.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = Color.Black)
+                Text(provider.serviceType, style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Star, contentDescription = "Rating", tint = Color(0xFFFFC107), modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("${provider.rating} / 5.0", fontWeight = FontWeight.Bold, color = Color.Black)
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider(color = Color(0xFFEEEEEE))
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    Text("EXPERIENCE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text(provider.experience, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("ABOUT", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text(provider.description.ifBlank { "No description provided." }, style = MaterialTheme.typography.bodyMedium, color = Color.DarkGray)
+                }
+                
+                Button(
+                    onClick = onClose,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Close", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProviderInitialsAvatar(name: String) {
+    val initials = remember(name) {
+        val split = name.trim().split(" ")
+        if (split.isEmpty() || split[0].isEmpty()) "?" else split.take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
+    }
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(text = initials, style = MaterialTheme.typography.headlineLarge, color = Color.LightGray, fontWeight = FontWeight.ExtraBold) }
+}
+
+@Composable
+fun ProviderSkeletonCard() {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).localShimmerEffect())
+        Spacer(modifier = Modifier.height(8.dp)); Box(modifier = Modifier.fillMaxWidth(0.7f).height(16.dp).localShimmerEffect())
+        Spacer(modifier = Modifier.height(4.dp)); Box(modifier = Modifier.fillMaxWidth(0.5f).height(14.dp).localShimmerEffect())
+    }
+}
+
+@Composable
+fun ProviderHomeSearchBar(query: String, onQueryChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        placeholder = { Text("What are you looking for?") },
+        leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Black) },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Default.Close, null, tint = Color.Black)
+                }
             }
         },
-        modifier = Modifier.fillMaxSize()
+        shape = CircleShape,
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = Color.Transparent,
+            focusedBorderColor = Color.Black,
+            unfocusedContainerColor = Color(0xFFF4F4F4),
+            focusedContainerColor = Color.White
+        )
     )
+}
+
+@Composable
+fun ProviderEmptySearchState(query: String) { Column(modifier = Modifier.fillMaxWidth().padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("No results for '$query'", style = MaterialTheme.typography.bodyLarge, color = Color.Gray); Text("Try searching for 'Plumber' or 'Electrician'", style = MaterialTheme.typography.bodySmall, color = Color.LightGray) } }
+
+private fun checkNetworkAvailabilityLocal(context: Context): Boolean { val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager; val network = connectivityManager.activeNetwork ?: return false; val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false; return when { activeNetwork.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> true; activeNetwork.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> true; else -> false } }
+
+fun calculateDistanceLocal(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
+    val results = FloatArray(1)
+    android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
+    return results[0]
+}
+
+private fun getLocationLocal(context: Context, callback: (Double, Double) -> Unit) {
+    val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context)
+    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                callback(location.latitude, location.longitude)
+            }
+        }
+    }
+}
+
+fun Modifier.localShimmerEffect(): Modifier = composed {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+    val shimmerColors = listOf(
+        Color.LightGray.copy(alpha = 0.6f),
+        Color.LightGray.copy(alpha = 0.2f),
+        Color.LightGray.copy(alpha = 0.6f),
+    )
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset.Zero,
+        end = Offset(x = translateAnim, y = translateAnim)
+    )
+    return@composed this.background(brush)
 }

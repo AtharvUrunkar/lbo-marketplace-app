@@ -33,7 +33,9 @@ import com.example.lbo_marketplace.R
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CommunityScreen() {
+fun CommunityScreen(
+    header: @Composable () -> Unit
+) {
     // Mock Notifications Data for Provider
     var notifications by remember {
         mutableStateOf(
@@ -50,8 +52,9 @@ fun CommunityScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .padding(top = 16.dp)
     ) {
+        header()
+
         Text(
             text = "Community",
             style = MaterialTheme.typography.headlineMedium,
