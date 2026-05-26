@@ -368,7 +368,8 @@ fun ProviderProfileScreen(
                                                 description = editDescription,
                                                 experience = editExperience,
                                                 latitude = editLat.toDoubleOrNull() ?: 0.0,
-                                                longitude = editLng.toDoubleOrNull() ?: 0.0
+                                                longitude = editLng.toDoubleOrNull() ?: 0.0'
+                                                '
                                             ) { success, msg ->
                                                 if (success) {
                                                     val updateTime = System.currentTimeMillis()

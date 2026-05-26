@@ -12,8 +12,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -23,35 +23,40 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
+import com.example.lbo_marketplace.utils.getAddressFromLocation
 
-/**
- * Screen to apply as a service provider.
- * 
- * FIXES:
- * - Standardized all buttons to FULL BLACK (#000000).
- * - Enforced PURE WHITE (#FFFFFF) background.
- * - Added statusBarsPadding() for safe UI rendering.
- */
 @Composable
 fun ApplyProviderScreen(
+
     onSubmit: (
+
         String, // name
-        String, // serviceType
+
+        String, // service type
+
         String, // description
+
         String, // experience
+
         Double, // latitude
+
         Double, // longitude
-        Uri     // verification document uri
+
+        Uri // verification document
+
     ) -> Unit
 ) {
 
-    val context = LocalContext.current
+    val context =
+        LocalContext.current
 
-    // =========================================================
+    // =====================================================
     // 🔥 FORM STATES
-    // =========================================================
+    // =====================================================
 
-    var name by remember { mutableStateOf("") }
+    var name by remember {
+        mutableStateOf("")
+    }
 
     var serviceType by remember {
         mutableStateOf("")
@@ -65,9 +70,9 @@ fun ApplyProviderScreen(
         mutableStateOf("")
     }
 
-    // =========================================================
+    // =====================================================
     // 🔥 LOCATION
-    // =========================================================
+    // =====================================================
 
     var latitude by remember {
         mutableStateOf(0.0)
@@ -77,29 +82,43 @@ fun ApplyProviderScreen(
         mutableStateOf(0.0)
     }
 
-    // =========================================================
-    // 🔥 DOCUMENT STATE
-    // =========================================================
+    var city by remember {
+        mutableStateOf("")
+    }
+
+    var area by remember {
+        mutableStateOf("")
+    }
+
+    var fullAddress by remember {
+        mutableStateOf("")
+    }
+
+    // =====================================================
+    // 🔥 DOCUMENT
+    // =====================================================
 
     var verificationDocUri by remember {
         mutableStateOf<Uri?>(null)
     }
 
-    // =========================================================
-    // 🔥 SUBMIT STATE
-    // =========================================================
+    // =====================================================
+    // 🔥 LOADING
+    // =====================================================
 
     var isSubmitting by remember {
         mutableStateOf(false)
     }
 
-    // =========================================================
+    // =====================================================
     // 🔥 DOCUMENT PICKER
-    // =========================================================
+    // =====================================================
 
     val documentPickerLauncher =
         rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
+            contract =
+                ActivityResultContracts
+                    .GetContent()
         ) { uri: Uri? ->
 
             uri?.let {
@@ -108,12 +127,19 @@ fun ApplyProviderScreen(
                     context.contentResolver
                         .getType(uri)
 
-                if (mimeType != "application/pdf") {
+                if (
+                    mimeType !=
+                    "application/pdf"
+                ) {
 
                     Toast.makeText(
+
                         context,
+
                         "Only PDF files allowed",
+
                         Toast.LENGTH_SHORT
+
                     ).show()
 
                     return@rememberLauncherForActivityResult
@@ -123,314 +149,470 @@ fun ApplyProviderScreen(
             }
         }
 
-    // =========================================================
+    // =====================================================
     // 🔥 LOCATION PERMISSION
-    // =========================================================
+    // =====================================================
 
     val locationPermissionLauncher =
         rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
+
+            contract =
+                ActivityResultContracts
+                    .RequestPermission()
+
         ) { isGranted ->
 
             if (isGranted) {
 
-                getLocation(context) { lat, lng ->
+                fetchProviderLocation(
+                    context
+                ) { lat, lng ->
 
                     latitude = lat
                     longitude = lng
+
+                    // =================================
+                    // 🔥 GEOCODER
+                    // =================================
+
+                    val locationData =
+
+                        getAddressFromLocation(
+
+                            context,
+
+                            lat,
+
+                            lng
+                        )
+
+                    city =
+                        locationData.city
+
+                    area =
+                        locationData.area
+
+                    fullAddress =
+                        locationData.fullAddress
                 }
 
             } else {
 
                 Toast.makeText(
+
                     context,
+
                     "Location permission denied",
+
                     Toast.LENGTH_SHORT
+
                 ).show()
             }
         }
 
-    // =========================================================
-    // 🔥 UI
-    // =========================================================
+    // =====================================================
+    // 🔥 MAIN UI
+    // =====================================================
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(
-                rememberScrollState()
-            )
-            .background(Color.White) // ✅ PURE WHITE
-            .statusBarsPadding()
-            .padding(16.dp)
+
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(
+                    rememberScrollState()
+                )
+                .background(Color.White)
+                .statusBarsPadding()
+                .padding(16.dp)
     ) {
 
         Text(
-            text = "Apply as Service Provider",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
+
+            text =
+                "Apply as Service Provider",
+
+            style =
+                MaterialTheme
+                    .typography
+                    .headlineMedium,
+
+            fontWeight =
+                FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(
+            modifier =
+                Modifier.height(20.dp)
+        )
 
-        // =====================================================
-        // 🔥 DOCUMENT SECTION
-        // =====================================================
+        // =================================================
+        // 🔥 DOCUMENT
+        // =================================================
 
-        Text("Verification Document (PDF only)")
+        Text(
+            "Verification Document (PDF only)"
+        )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(
+            modifier =
+                Modifier.height(8.dp)
+        )
 
         Button(
+
             onClick = {
 
                 documentPickerLauncher.launch(
                     "application/pdf"
                 )
             },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+
+            shape =
+                RoundedCornerShape(12.dp),
+
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = Color.Black
+                )
         ) {
 
-            Text("Upload Verification Document", fontWeight = FontWeight.Bold)
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        verificationDocUri?.let { uri ->
-
-            val docSize =
-                getFileSizeInMB(
-                    context,
-                    uri
-                )
-
-            Text("✅ PDF Selected")
-
-            Spacer(modifier = Modifier.height(4.dp))
-
             Text(
-                text =
-                    "Document Size: %.2f MB"
-                        .format(docSize)
+                "Upload Verification Document"
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(
+            modifier =
+                Modifier.height(8.dp)
+        )
 
-        // =====================================================
-        // 🔥 FORM FIELDS
-        // =====================================================
+        verificationDocUri?.let {
+
+            Text("✅ PDF Selected")
+        }
+
+        Spacer(
+            modifier =
+                Modifier.height(20.dp)
+        )
+
+        // =================================================
+        // 🔥 INPUT FIELDS
+        // =================================================
 
         OutlinedTextField(
+
             value = name,
-            onValueChange = { name = it },
+
+            onValueChange = {
+                name = it
+            },
+
             label = {
                 Text("Full Name")
             },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, focusedLabelColor = Color.Black)
+
+            modifier =
+                Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(
+            modifier =
+                Modifier.height(10.dp)
+        )
 
         OutlinedTextField(
+
             value = serviceType,
+
             onValueChange = {
                 serviceType = it
             },
+
             label = {
                 Text("Service Type")
             },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, focusedLabelColor = Color.Black)
+
+            modifier =
+                Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(
+            modifier =
+                Modifier.height(10.dp)
+        )
 
         OutlinedTextField(
+
             value = experience,
+
             onValueChange = {
                 experience = it
             },
+
             label = {
                 Text("Experience")
             },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, focusedLabelColor = Color.Black)
+
+            modifier =
+                Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(
+            modifier =
+                Modifier.height(10.dp)
+        )
 
         OutlinedTextField(
+
             value = description,
+
             onValueChange = {
                 description = it
             },
+
             label = {
                 Text("Description")
             },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, focusedLabelColor = Color.Black)
+
+            modifier =
+                Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(
+            modifier =
+                Modifier.height(20.dp)
+        )
 
-        // =====================================================
-        // 📍 LOCATION
-        // =====================================================
+        // =================================================
+        // 📍 LOCATION BUTTON
+        // =================================================
 
         Button(
+
             onClick = {
 
                 if (
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
-                    getLocation(context) { lat, lng ->
+                    ContextCompat.checkSelfPermission(
+
+                        context,
+
+                        Manifest.permission
+                            .ACCESS_FINE_LOCATION
+
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                ) {
+
+                    fetchProviderLocation(
+                        context
+                    ) { lat, lng ->
 
                         latitude = lat
                         longitude = lng
+
+                        val locationData =
+
+                            getAddressFromLocation(
+
+                                context,
+
+                                lat,
+
+                                lng
+                            )
+
+                        city =
+                            locationData.city
+
+                        area =
+                            locationData.area
+
+                        fullAddress =
+                            locationData.fullAddress
                     }
 
                 } else {
 
                     locationPermissionLauncher.launch(
-                        Manifest.permission.ACCESS_FINE_LOCATION
+                        Manifest.permission
+                            .ACCESS_FINE_LOCATION
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Black) // ✅ FULL BLACK
+
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = Color.Black
+                )
         ) {
 
-            Text("Get Current Location", fontWeight = FontWeight.Bold)
+            Text(
+                "Get Current Location"
+            )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(
+            modifier =
+                Modifier.height(12.dp)
+        )
 
-        Text("📍 Latitude: $latitude")
+        Text("📍 City: $city")
 
-        Text("📍 Longitude: $longitude")
+        Text("📍 Area: $area")
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Text("📍 Address: $fullAddress")
 
-        // =====================================================
+        Spacer(
+            modifier =
+                Modifier.height(30.dp)
+        )
+
+        // =================================================
         // 🚀 SUBMIT BUTTON
-        // =====================================================
+        // =================================================
 
         Button(
+
             onClick = {
 
-                when {
+                if (
 
                     name.isBlank() ||
-                            serviceType.isBlank() ||
-                            experience.isBlank() -> {
 
-                        Toast.makeText(
-                            context,
-                            "Please fill all required fields",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    serviceType.isBlank() ||
 
-                    verificationDocUri == null -> {
+                    experience.isBlank()
 
-                        Toast.makeText(
-                            context,
-                            "Please upload PDF document",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                ) {
 
-                    else -> {
+                    Toast.makeText(
 
-                        val docSize =
-                            getFileSizeInMB(
-                                context,
-                                verificationDocUri!!
-                            )
+                        context,
 
-                        // 🔥 4MB LIMIT
-                        if (docSize > 4) {
+                        "Fill all required fields",
 
-                            Toast.makeText(
-                                context,
-                                "PDF must be below 4 MB",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                        Toast.LENGTH_SHORT
 
-                            return@Button
-                        }
+                    ).show()
 
-                        isSubmitting = true
-
-                        onSubmit(
-                            name,
-                            serviceType,
-                            description,
-                            experience,
-                            latitude,
-                            longitude,
-                            verificationDocUri!!
-                        )
-                    }
+                    return@Button
                 }
+
+                if (
+                    verificationDocUri == null
+                ) {
+
+                    Toast.makeText(
+
+                        context,
+
+                        "Upload PDF document",
+
+                        Toast.LENGTH_SHORT
+
+                    ).show()
+
+                    return@Button
+                }
+
+                isSubmitting = true
+
+                onSubmit(
+
+                    name,
+
+                    serviceType,
+
+                    description,
+
+                    experience,
+
+                    latitude,
+
+                    longitude,
+
+                    verificationDocUri!!
+                )
             },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-            enabled = !isSubmitting
+
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = Color.Black
+                )
         ) {
 
             if (isSubmitting) {
 
                 CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
+                    color = Color.White
                 )
 
             } else {
 
-                Text("Submit Application", fontWeight = FontWeight.Bold)
+                Text(
+                    "Submit Application"
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(
+            modifier =
+                Modifier.height(40.dp)
+        )
     }
 }
 
-// =============================================================
-// 🔥 LOCATION FUNCTION
-// =============================================================
+// =========================================================
+// 🔥 LOCATION FETCHER
+// =========================================================
 
 @SuppressLint("MissingPermission")
-fun getLocation(
+fun fetchProviderLocation(
+
     context: Context,
-    onResult: (Double, Double) -> Unit
+
+    onResult: (
+        Double,
+        Double
+    ) -> Unit
 ) {
 
     val fusedLocationClient =
+
         LocationServices
             .getFusedLocationProviderClient(
                 context
             )
 
-    fusedLocationClient.lastLocation
+    fusedLocationClient
+        .lastLocation
+
         .addOnSuccessListener { location: Location? ->
 
             if (location != null) {
 
                 onResult(
+
                     location.latitude,
+
                     location.longitude
                 )
 
@@ -439,33 +621,9 @@ fun getLocation(
                 onResult(0.0, 0.0)
             }
         }
+
         .addOnFailureListener {
 
             onResult(0.0, 0.0)
         }
-}
-
-// =============================================================
-// 🔥 FILE SIZE
-// =============================================================
-
-fun getFileSizeInMB(
-    context: Context,
-    uri: Uri
-): Double {
-
-    val cursor =
-        context.contentResolver
-            .openFileDescriptor(
-                uri,
-                "r"
-            )
-
-    val size =
-        cursor?.statSize ?: 0L
-
-    cursor?.close()
-
-    return size.toDouble() /
-            (1024 * 1024)
 }
