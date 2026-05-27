@@ -138,11 +138,15 @@ fun HomeTab(
 
     val bannerItems = remember {
         listOf(
-            BannerItem("Expert Services", localImageRes = R.drawable.logo),
-            BannerItem("Quality Work", localVideoRes = R.raw.logo, isVideo = true),
-            BannerItem("Top Providers", localImageRes = R.drawable.logo)
+            BannerItem("Expert Constructions", localImageRes = R.drawable.constructionbanner),
+            BannerItem("Quality Work", localVideoRes = R.raw.fevicol, isVideo = true),
+            BannerItem("Computer Services", localImageRes = R.drawable.kushnacombanner),
+            BannerItem("Hotel", localImageRes = R.drawable.sayajibanner),
+            BannerItem("Marketing", localImageRes = R.drawable.digitalmarketing),
+            BannerItem("Painters", localImageRes = R.drawable.painterbranding)
         )
     }
+
 
     Column(
         modifier = Modifier
@@ -245,18 +249,28 @@ fun BannerSlider(items: List<BannerItem>) {
     if (items.isEmpty()) return
     val pagerState = rememberPagerState(pageCount = { items.size })
     val coroutineScope = rememberCoroutineScope()
+    val videoFailedMap = remember { mutableStateMapOf<Int, Boolean>() }
+
     LaunchedEffect(pagerState.currentPage) {
         val currentItem = items[pagerState.currentPage]
-        val flipDelay = if (currentItem.isVideo) 10000L else 3500L
-        delay(flipDelay)
-        coroutineScope.launch { pagerState.animateScrollToPage((pagerState.currentPage + 1) % items.size) }
+        val isVideoMode = currentItem.isVideo && !(videoFailedMap[pagerState.currentPage] ?: false)
+        if (!isVideoMode) {
+            delay(3500L)
+            coroutineScope.launch { pagerState.animateScrollToPage((pagerState.currentPage + 1) % items.size) }
+        }
     }
     Box(modifier = Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(20.dp)).background(Color.White)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             val item = items[page]
-            var videoFailed by remember { mutableStateOf(false) }
-            if (item.isVideo && !videoFailed) {
-                DynamicVideoPlayer(url = item.videoUrl, localRes = item.localVideoRes, isActive = pagerState.currentPage == page, onError = { videoFailed = true }, onComplete = { coroutineScope.launch { pagerState.animateScrollToPage((page + 1) % items.size) } })
+            val hasVideoFailed = videoFailedMap[page] ?: false
+            if (item.isVideo && !hasVideoFailed) {
+                DynamicVideoPlayer(
+                    url = item.videoUrl, 
+                    localRes = item.localVideoRes, 
+                    isActive = pagerState.currentPage == page, 
+                    onError = { videoFailedMap[page] = true }, 
+                    onComplete = { coroutineScope.launch { pagerState.animateScrollToPage((page + 1) % items.size) } }
+                )
             } else {
                 DynamicImage(url = item.imageUrl, localRes = item.localImageRes, title = item.title)
             }
