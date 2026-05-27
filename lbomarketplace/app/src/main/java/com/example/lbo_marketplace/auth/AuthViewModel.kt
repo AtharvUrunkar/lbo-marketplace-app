@@ -4,10 +4,10 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.launch
+import com.onesignal.OneSignal
 
 class AuthViewModel : ViewModel() {
 
@@ -94,6 +94,12 @@ class AuthViewModel : ViewModel() {
                             it.first
                         )
 
+                        // 🔥 SAVE ONESIGNAL PLAYER ID
+
+                        saveOneSignalPlayerId(
+                            it.first
+                        )
+
                         AuthState.Authenticated(
 
                             it.first,
@@ -147,6 +153,12 @@ class AuthViewModel : ViewModel() {
                             it.first
                         )
 
+                        // 🔥 SAVE ONESIGNAL PLAYER ID
+
+                        saveOneSignalPlayerId(
+                            it.first
+                        )
+
                         AuthState.Authenticated(
 
                             it.first,
@@ -188,6 +200,12 @@ class AuthViewModel : ViewModel() {
                     onSuccess = {
 
                         startProviderListener(
+                            it.first
+                        )
+
+                        // 🔥 SAVE ONESIGNAL PLAYER ID
+
+                        saveOneSignalPlayerId(
                             it.first
                         )
 
@@ -411,6 +429,41 @@ class AuthViewModel : ViewModel() {
 
                 e.printStackTrace()
             }
+        }
+    }
+
+    // =====================================================
+    // 🔥 SAVE ONESIGNAL PLAYER ID
+    // =====================================================
+
+    fun saveOneSignalPlayerId(
+        userId: String
+    ) {
+
+        try {
+
+            val playerId =
+
+                OneSignal.getDeviceState()
+                    ?.userId ?: ""
+
+            if (playerId.isNotEmpty()) {
+
+                db.collection("users")
+
+                    .document(userId)
+
+                    .update(
+
+                        "oneSignalPlayerId",
+
+                        playerId
+                    )
+            }
+
+        } catch (e: Exception) {
+
+            e.printStackTrace()
         }
     }
 
