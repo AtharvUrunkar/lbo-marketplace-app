@@ -1,0 +1,5 @@
+# Firebase
+app/google-services.json
+/build
+/app/build
+.gradle
