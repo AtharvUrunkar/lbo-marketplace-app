@@ -46,16 +46,6 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
-/**
- * Provider Profile Screen.
- *
- * Mirrors the exact UI of the user ProfileTab:
- *  ✅ Circular profile photo with Cloudinary upload
- *  ✅ Share / Shareable ID-card FAB
- *  ✅ Provider-specific details card (editable)
- *  ❌ NO "Become a Service Provider" button
- *  ✅ Logout button (full black, same style)
- */
 @Composable
 fun ProviderProfileScreen(
     header: @Composable () -> Unit,
@@ -82,6 +72,9 @@ fun ProviderProfileScreen(
     var editExperience by remember { mutableStateOf("") }
     var editLat by remember { mutableStateOf("") }
     var editLng by remember { mutableStateOf("") }
+    var editCity by remember { mutableStateOf("") }
+    var editArea by remember { mutableStateOf("") }
+    var editFullAddress by remember { mutableStateOf("") }
 
     val currentProfile = providerViewModel.currentProviderProfile
     val name = currentProfile?.name?.ifBlank { null } ?: userName.ifBlank { null } ?: user?.displayName?.ifBlank { null } ?: "Provider"
@@ -111,6 +104,9 @@ fun ProviderProfileScreen(
             editExperience  = currentProfile.experience
             editLat         = currentProfile.latitude.toString()
             editLng         = currentProfile.longitude.toString()
+            editCity        = currentProfile.city
+            editArea        = currentProfile.area
+            editFullAddress = currentProfile.fullAddress
         }
     }
 
@@ -130,7 +126,7 @@ fun ProviderProfileScreen(
                         return@launch
                     }
                     val compressedFile = compressImage(context, uri)
-                    val uploadResult  = cloudinaryRepo.uploadFile(compressedFile)
+                    val uploadResult = cloudinaryRepo.uploadFile(compressedFile)
                     if (uploadResult.isFailure) {
                         Toast.makeText(context, "Upload failed", Toast.LENGTH_SHORT).show()
                         isUploading = false
@@ -193,7 +189,6 @@ fun ProviderProfileScreen(
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Render Header
             header()
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -232,7 +227,6 @@ fun ProviderProfileScreen(
                     }
                 }
 
-                // Share FAB (black, circular – same as user)
                 FloatingActionButton(
                     onClick = { if (!isSharing) shareProfileImage() },
                     modifier = Modifier
@@ -259,7 +253,6 @@ fun ProviderProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Set profile picture button is placed above the Name and Service Type to match user
             Button(
                 onClick = { imagePickerLauncher.launch("image/*") },
                 enabled = !isUploading,
@@ -278,7 +271,6 @@ fun ProviderProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Name is placed DIRECTLY under the Set Profile Picture button
             Text(
                 text = name,
                 style = MaterialTheme.typography.headlineSmall,
@@ -296,12 +288,12 @@ fun ProviderProfileScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // ── Info rows (same style as user ProfileInfoItem) ──
+            // ── Info rows ──
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-                ) {
+            ) {
                 ProviderProfileInfoItem(
                     icon = Icons.Default.Build,
                     label = "SERVICE TYPE",
@@ -355,8 +347,14 @@ fun ProviderProfileScreen(
                                             val remainingMs = cooldownMs - (now - lastProfileUpdate)
                                             val hours = remainingMs / (1000 * 60 * 60)
                                             val minutes = (remainingMs % (1000 * 60 * 60)) / (1000 * 60)
-                                            val tryAfterTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(java.util.Date(lastProfileUpdate + cooldownMs))
-                                            Toast.makeText(context, "Try after $tryAfterTime ($hours hrs, $minutes mins remaining)", Toast.LENGTH_LONG).show()
+                                            val tryAfterTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(
+                                                java.util.Date(lastProfileUpdate + cooldownMs)
+                                            )
+                                            Toast.makeText(
+                                                context,
+                                                "Try after $tryAfterTime ($hours hrs, $minutes mins remaining)",
+                                                Toast.LENGTH_LONG
+                                            ).show()
                                             return@TextButton
                                         }
 
@@ -368,14 +366,20 @@ fun ProviderProfileScreen(
                                                 description = editDescription,
                                                 experience = editExperience,
                                                 latitude = editLat.toDoubleOrNull() ?: 0.0,
-                                                longitude = editLng.toDoubleOrNull() ?: 0.0
+                                                longitude = editLng.toDoubleOrNull() ?: 0.0,
+                                                city = editCity,
+                                                area = editArea,
+                                                fullAddress = editFullAddress
                                             ) { success, msg ->
                                                 if (success) {
                                                     val updateTime = System.currentTimeMillis()
                                                     lastProfileUpdate = updateTime
-                                                    // Save update time in both users and provider_requests collections!
-                                                    FirebaseFirestore.getInstance().collection("users").document(uid).update("lastProfileUpdate", updateTime)
-                                                    FirebaseFirestore.getInstance().collection("provider_requests").document(uid).update("lastProfileUpdate", updateTime)
+                                                    FirebaseFirestore.getInstance()
+                                                        .collection("users").document(uid)
+                                                        .update("lastProfileUpdate", updateTime)
+                                                    FirebaseFirestore.getInstance()
+                                                        .collection("provider_requests").document(uid)
+                                                        .update("lastProfileUpdate", updateTime)
                                                     isEditMode = false
                                                 }
                                                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
@@ -394,11 +398,15 @@ fun ProviderProfileScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         if (isEditMode) {
+                            // Text fields for basic info
                             listOf(
-                                Triple(editName,        "Name")        { v: String -> editName = v },
+                                Triple(editName,        "Name")         { v: String -> editName = v },
                                 Triple(editServiceType, "Service Type") { v: String -> editServiceType = v },
-                                Triple(editExperience,  "Experience")  { v: String -> editExperience = v },
-                                Triple(editDescription, "Description") { v: String -> editDescription = v }
+                                Triple(editExperience,  "Experience")   { v: String -> editExperience = v },
+                                Triple(editDescription, "Description")  { v: String -> editDescription = v },
+                                Triple(editCity,        "City")         { v: String -> editCity = v },
+                                Triple(editArea,        "Area")         { v: String -> editArea = v },
+                                Triple(editFullAddress, "Full Address") { v: String -> editFullAddress = v }
                             ).forEach { (value, label, onValueChange) ->
                                 OutlinedTextField(
                                     value = value,
@@ -414,6 +422,7 @@ fun ProviderProfileScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
+                            // Lat / Lng row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -448,6 +457,9 @@ fun ProviderProfileScreen(
                             ProviderDetailRow("Service Type", currentProfile.serviceType)
                             ProviderDetailRow("Experience",   currentProfile.experience)
                             ProviderDetailRow("Description",  currentProfile.description)
+                            ProviderDetailRow("City",         currentProfile.city)
+                            ProviderDetailRow("Area",         currentProfile.area)
+                            ProviderDetailRow("Full Address", currentProfile.fullAddress)
                             ProviderDetailRow("Location",     "Lat: ${currentProfile.latitude}, Lng: ${currentProfile.longitude}")
                         }
                     }
@@ -456,7 +468,7 @@ fun ProviderProfileScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // ── Logout (no "Become Provider" button for providers) ──
+            // ── Logout ──
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                 Button(
                     onClick = { authViewModel.logout() },
@@ -476,7 +488,7 @@ fun ProviderProfileScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Small helper composables
+// Helper Composables
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -525,7 +537,7 @@ fun ProviderDetailRow(label: String, value: String) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Share helpers (provider-specific bitmap)
+// Share Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 private fun createProviderProfileBitmap(
@@ -541,7 +553,7 @@ private fun createProviderProfileBitmap(
     canvas.drawColor(android.graphics.Color.WHITE)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    // Avatar circle at y = 200f (center), radius = 150f, bottom is at 350f
+    // Avatar circle
     paint.color = android.graphics.Color.parseColor("#F4F4F4")
     canvas.drawCircle(width / 2f, 200f, 150f, paint)
     paint.color = android.graphics.Color.LTGRAY
@@ -550,23 +562,24 @@ private fun createProviderProfileBitmap(
     val initial = name.take(1).uppercase()
     canvas.drawText(initial, (width - paint.measureText(initial)) / 2, 245f, paint)
 
-    // Name is drawn DIRECTLY under the avatar circle (e.g. at y = 430f)
+    // Name
     paint.color = android.graphics.Color.BLACK
     paint.textSize = 80f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     canvas.drawText(name, (width - paint.measureText(name)) / 2, 430f, paint)
 
-    // Motto / Verified text drawn under the name
+    // Verified badge
     paint.color = android.graphics.Color.parseColor("#6C63FF")
     paint.textSize = 45f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    val motto = "LBO Verified Service Provider 🛠️"
+    val motto = "LBO Verified Service Provider"
     canvas.drawText(motto, (width - paint.measureText(motto)) / 2, 510f, paint)
 
-    // Logo drawn under the motto
+    // Logo
     val logo = try { BitmapFactory.decodeResource(context.resources, R.drawable.logo) } catch (e: Exception) { null }
     if (logo != null) {
-        val s = 120; val out = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        val s = 120
+        val out = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
         val c2 = Canvas(out); val p2 = Paint(Paint.ANTI_ALIAS_FLAG)
         c2.drawCircle(s / 2f, s / 2f, s / 2f, p2)
         p2.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
@@ -574,9 +587,10 @@ private fun createProviderProfileBitmap(
         canvas.drawBitmap(out, (width - s) / 2f, 570f, paint)
     }
 
-    // Details box starting slightly lower
+    // Details box
     paint.color = android.graphics.Color.parseColor("#F8F8F8")
     canvas.drawRoundRect(150f, 760f, 930f, 1180f, 40f, 40f, paint)
+
     paint.textSize = 40f
     paint.color = android.graphics.Color.GRAY
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -584,14 +598,14 @@ private fun createProviderProfileBitmap(
     paint.color = android.graphics.Color.BLACK
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
     canvas.drawText(serviceType, 200f, 880f, paint)
-    
+
     paint.color = android.graphics.Color.GRAY
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     canvas.drawText("EXPERIENCE", 200f, 950f, paint)
     paint.color = android.graphics.Color.BLACK
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
     canvas.drawText(experience, 200f, 1000f, paint)
-    
+
     paint.color = android.graphics.Color.GRAY
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     canvas.drawText("EMAIL", 200f, 1070f, paint)
