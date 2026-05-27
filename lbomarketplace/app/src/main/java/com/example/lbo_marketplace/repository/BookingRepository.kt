@@ -3,39 +3,162 @@ package com.example.lbo_marketplace.data.repository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
+import com.example.lbo_marketplace.repository.NotificationRepository
 
 class BookingRepository {
 
     private val db = FirebaseFirestore.getInstance()
 
-    suspend fun createBooking(data: Map<String, Any>): Result<String> {
-        return try {
-            val docRef = db.collection("bookings").document()
-            val bookingId = docRef.id
-            val bookingData = data.toMutableMap()
-            bookingData["bookingId"] = bookingId
+    suspend fun createBooking(
+        data: Map<String, Any>
+    ): Result<String> {
 
-            // Robust Self-Healing: Fetch provider email and actual UID to store in booking
-            val inputProviderId = data["providerId"] as? String ?: ""
+        return try {
+
+            val docRef =
+
+                db.collection("bookings")
+                    .document()
+
+            val bookingId = docRef.id
+
+            val bookingData =
+                data.toMutableMap()
+
+            bookingData["bookingId"] =
+                bookingId
+
+            // =====================================================
+            // 🔥 FETCH PROVIDER INFO
+            // =====================================================
+
+            val inputProviderId =
+
+                data["providerId"]
+                        as? String ?: ""
+
+            var providerPlayerId = ""
+
             if (inputProviderId.isNotEmpty()) {
+
                 try {
-                    val pDoc = db.collection("provider_requests").document(inputProviderId).get().await()
+
+                    val pDoc =
+
+                        db.collection(
+                            "provider_requests"
+                        )
+
+                            .document(
+                                inputProviderId
+                            )
+
+                            .get()
+
+                            .await()
+
                     if (pDoc.exists()) {
-                        val actualUid = pDoc.getString("userId") ?: inputProviderId
-                        val pEmail = pDoc.getString("email") ?: ""
-                        bookingData["providerUid"] = actualUid
+
+                        val actualUid =
+
+                            pDoc.getString(
+                                "userId"
+                            ) ?: inputProviderId
+
+                        val pEmail =
+
+                            pDoc.getString(
+                                "email"
+                            ) ?: ""
+
+                        bookingData["providerUid"] =
+                            actualUid
+
                         if (pEmail.isNotEmpty()) {
-                            bookingData["providerEmail"] = pEmail
+
+                            bookingData["providerEmail"] =
+                                pEmail
+                        }
+
+                        // =====================================================
+                        // 🔥 FETCH PROVIDER PLAYER ID
+                        // =====================================================
+
+                        try {
+
+                            val userDoc =
+
+                                db.collection("users")
+
+                                    .document(actualUid)
+
+                                    .get()
+
+                                    .await()
+
+                            providerPlayerId =
+
+                                userDoc.getString(
+                                    "oneSignalPlayerId"
+                                ) ?: ""
+
+                        } catch (e: Exception) {
+
+                            e.printStackTrace()
                         }
                     }
+
                 } catch (e: Exception) {
-                    // ignore fallback
+
+                    e.printStackTrace()
                 }
             }
 
-            docRef.set(bookingData).await()
-            Result.success("Booking Created")
+            // =====================================================
+            // 🔥 SAVE BOOKING
+            // =====================================================
+
+            docRef.set(bookingData)
+                .await()
+
+            // =====================================================
+            // 🔥 SEND PROVIDER NOTIFICATION
+            // =====================================================
+
+            if (providerPlayerId.isNotEmpty()) {
+
+                try {
+
+                    val notificationRepository =
+                        NotificationRepository()
+
+                    val customerName =
+
+                        data["customerName"]
+                                as? String ?: "New User"
+
+                    notificationRepository
+                        .sendNotification(
+
+                            providerPlayerId,
+
+                            "New Booking Request 🚀",
+
+                            "$customerName sent you a booking request"
+                        )
+
+                } catch (e: Exception) {
+
+                    e.printStackTrace()
+                }
+            }
+
+            Result.success(
+                "Booking Created"
+            )
+
         } catch (e: Exception) {
+
             Result.failure(e)
         }
     }
@@ -105,8 +228,8 @@ class BookingRepository {
 
     suspend fun updateBookingStatus(bookingId: String, status: String): Result<String> {
         return try {
-            db.collection("bookings").document(bookingId)
-                .update("status", status).await()
+
+            tus).await()
             Result.success("Booking $status")
         } catch (e: Exception) {
             Result.failure(e)
