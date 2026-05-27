@@ -317,6 +317,7 @@ fun Header(
 
 @Composable
 fun GlobalMenuDialog(title: String, content: String, onClose: () -> Unit) {
+<<<<<<< HEAD
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(title, fontWeight = FontWeight.Bold) },
@@ -421,4 +422,7 @@ fun ProviderDetailsScreen(
             Text("Book Now", fontWeight = FontWeight.Bold)
         }
     }
+
+    AlertDialog(onDismissRequest = onClose, title = { Text(title, fontWeight = FontWeight.Bold) }, text = { Text(content) }, confirmButton = { TextButton(onClick = onClose, colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)) { Text("Close") } }, shape = RoundedCornerShape(24.dp), containerColor = Color.White)
+
 }
