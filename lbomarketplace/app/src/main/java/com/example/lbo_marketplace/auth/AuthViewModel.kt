@@ -23,6 +23,9 @@ class AuthViewModel : ViewModel() {
 
     private val authManager = FirebaseAuthManager()
 
+    // 🔥 PROVIDER SWITCH: Allows registered service providers to enter customer mode to browse and book other providers.
+    val isProviderInCustomerMode = mutableStateOf(false)
+
     // The single source of truth for the app's authentication state
     private val _authState = mutableStateOf<AuthState>(AuthState.Idle)
     val authState: State<AuthState> = _authState
@@ -41,11 +44,19 @@ class AuthViewModel : ViewModel() {
      * 
      * REFERENCED IN: [AuthSessionTestScreen] (Register Button)
      */
-    fun register(name: String, email: String, password: String) {
+    fun register(
+        name: String, 
+        email: String, 
+        password: String,
+        phoneNumber: String = "",
+        pincode: String = "",
+        latitude: Double = 0.0,
+        longitude: Double = 0.0
+    ) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
 
-            val result = authManager.register(name, email, password)
+            val result = authManager.register(name, email, password, phoneNumber, pincode, latitude, longitude)
 
             _authState.value = result.fold(
                 onSuccess = {

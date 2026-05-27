@@ -39,6 +39,7 @@ import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.example.lbo_marketplace.R
 import com.example.lbo_marketplace.auth.AuthViewModel
+import com.example.lbo_marketplace.auth.AuthState
 import com.example.lbo_marketplace.data.repository.CloudinaryRepository
 import com.example.lbo_marketplace.utils.compressImage
 import com.google.firebase.auth.FirebaseAuth
@@ -231,7 +232,28 @@ fun ProfileTab(
             Spacer(modifier = Modifier.height(48.dp))
 
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Button(onClick = onApplyClick, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Black)) { Text("Become a Service Provider", fontWeight = FontWeight.Bold) }
+                val authState = authViewModel.authState.value
+                val isProvider = authState is AuthState.Authenticated && authState.role == "SERVICE_PROVIDER"
+
+                if (isProvider) {
+                    Button(
+                        onClick = { authViewModel.isProviderInCustomerMode.value = false },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+                    ) {
+                        Text("Switch to Provider Dashboard", fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Button(
+                        onClick = onApplyClick,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+                    ) {
+                        Text("Become a Service Provider", fontWeight = FontWeight.Bold)
+                    }
+                }
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(onClick = { authViewModel.logout() }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Black)) { Text("Logout", fontWeight = FontWeight.Bold) }
             }
@@ -302,6 +324,11 @@ fun ProfileTab(
                             )
                             FirebaseFirestore.getInstance().collection("users").document(uid).update(data)
                                 .addOnSuccessListener {
+                                    // Soft-update provider_requests if this user is a provider
+                                    FirebaseFirestore.getInstance().collection("provider_requests").document(uid)
+                                        .update(mapOf("name" to editNameInput, "lastProfileUpdate" to updateTime))
+                                        .addOnFailureListener { /* Ignore if document doesn't exist for this user */ }
+
                                     userName = editNameInput
                                     userPhone = editPhoneInput
                                     userAddress = editAddressInput

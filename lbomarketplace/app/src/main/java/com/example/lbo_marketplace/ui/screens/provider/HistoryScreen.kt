@@ -146,6 +146,7 @@ fun UpdateBookingItem(
     val rating = (booking["rating"] as? Number)?.toFloat()
     val feedback = booking["feedback"] as? String
 
+    var resolvedCustomerName by remember { mutableStateOf(customerName) }
     var resolvedCustomerUrl by remember { mutableStateOf("") }
     val customerId = booking["customerId"] as? String ?: ""
     LaunchedEffect(customerId) {
@@ -161,6 +162,13 @@ fun UpdateBookingItem(
                         com.example.lbo_marketplace.utils.UserProfileCache.putProfileImage(customerId, url)
                     }
             }
+            FirebaseFirestore.getInstance().collection("users").document(customerId).get()
+                .addOnSuccessListener { doc ->
+                    val name = doc.getString("name") ?: ""
+                    if (name.isNotEmpty()) {
+                        resolvedCustomerName = name
+                    }
+                }
         }
     }
 
@@ -214,7 +222,7 @@ fun UpdateBookingItem(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = customerName,
+                            text = resolvedCustomerName,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black

@@ -69,6 +69,15 @@ fun UserMainScreen(
     val providerViewModel: ProviderViewModel = viewModel()
     val bookingViewModel: BookingViewModel = viewModel()
     val user = FirebaseAuth.getInstance().currentUser
+    var customerName by remember { mutableStateOf("") }
+    LaunchedEffect(user?.uid) {
+        user?.uid?.let { uid ->
+            com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("users").document(uid).get()
+                .addOnSuccessListener { doc ->
+                    customerName = doc.getString("name") ?: ""
+                }
+        }
+    }
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
 
@@ -114,9 +123,10 @@ fun UserMainScreen(
             onBack = { selectedProviderId = null },
             onSubmit = { problem, address, date, contact ->
                 user?.let {
+                    val finalCustomerName = customerName.ifBlank { it.displayName ?: "User" }
                     bookingViewModel.book(
                         customerId = it.uid,
-                        customerName = it.displayName ?: "User",
+                        customerName = finalCustomerName,
                         customerPhone = contact,
                         providerId = selectedProviderId!!,
                         providerName = pName,

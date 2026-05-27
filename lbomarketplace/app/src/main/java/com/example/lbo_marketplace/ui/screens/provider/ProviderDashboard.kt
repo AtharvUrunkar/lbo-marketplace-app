@@ -83,6 +83,10 @@ fun ProviderDashboard(
                     modifier = Modifier.background(Color.White)
                 ) {
                     DropdownMenuItem(
+                        text = { Text("Switch to Customer Mode", color = Color.Black, fontWeight = FontWeight.Bold) },
+                        onClick = { menuExpanded = false; authViewModel.isProviderInCustomerMode.value = true }
+                    )
+                    DropdownMenuItem(
                         text = { Text("About", fontWeight = FontWeight.Bold) },
                         onClick = { menuExpanded = false; showAboutDialog = true }
                     )
@@ -122,7 +126,7 @@ fun ProviderDashboard(
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.List, contentDescription = "Updates") },
+                    icon = { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.List, contentDescription = "Updates") },
                     label = { Text("Updates") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color.Black,

@@ -3,11 +3,9 @@ package com.example.lbo_marketplace.ui.navigation
 import android.os.Build.VERSION.SDK_INT
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -34,7 +32,8 @@ import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.media3.common.PlaybackException
 
 /**
@@ -67,25 +66,30 @@ fun AppNavigation(viewModel: AuthViewModel = viewModel()) {
 
             // STATE: Authenticated -> User is logged in, check their role.
             is AuthState.Authenticated -> {
+                val isCustomerMode = viewModel.isProviderInCustomerMode.value
 
-                when (state.role) {
+                if (isCustomerMode) {
+                    UserMainScreen(viewModel)
+                } else {
+                    when (state.role) {
 
-                    // FLOW: User Dashboard
-                    "USER" -> UserMainScreen(viewModel)
+                        // FLOW: User Dashboard
+                        "USER" -> UserMainScreen(viewModel)
 
-                    // FLOW: Provider Dashboard
-                    "SERVICE_PROVIDER" -> ProviderDashboard()
+                        // FLOW: Provider Dashboard
+                        "SERVICE_PROVIDER" -> ProviderDashboard(authViewModel = viewModel)
 
-                    // FLOW: Admin (Restricted on Mobile)
-                    "ADMIN" -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Admin panel available on web")
+                        // FLOW: Admin (Restricted on Mobile)
+                        "ADMIN" -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Admin panel available on web")
+                            }
                         }
-                    }
 
-                    // FALLBACK: Go to Auth screen if role is unknown.
-                    else -> {
-                        AuthSessionTestScreen(viewModel)
+                        // FALLBACK: Go to Auth screen if role is unknown.
+                        else -> {
+                            AuthSessionTestScreen(viewModel)
+                        }
                     }
                 }
             }
@@ -235,7 +239,6 @@ fun PendingReviewScreen(onLogout: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .statusBarsPadding()
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -246,37 +249,28 @@ fun PendingReviewScreen(onLogout: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Your application is under review",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.ExtraBold,
+            text = "Application Under Review",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
             color = Color.Black
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Our team is verifying your credentials. Please check back later.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.DarkGray,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            text = "Your document has been submitted and is currently being verified by our LBO Administration team.\n\nThank you for your patience!",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(48.dp))
         Button(
             onClick = onLogout,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
+                .fillMaxWidth(0.8f)
+                .height(56.dp),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Black,
-                contentColor = Color.White
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
         ) {
-            Text(
-                text = "Logout",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text("Logout", fontWeight = FontWeight.Bold)
         }
     }
 }

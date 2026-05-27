@@ -1,4 +1,4 @@
-package com.example.lbo_marketplace.data.repository
+package com.example.lbo_marketplace.repository
 
 import com.example.lbo_marketplace.data.model.Provider
 import com.google.firebase.firestore.FirebaseFirestore
@@ -9,62 +9,49 @@ class ProviderRepository {
     private val db = FirebaseFirestore.getInstance()
 
     // =========================================================
-    // 🔥 APPLY FOR PROVIDER WITH FULL DETAILS
+    // 🔥 SUBMIT PROVIDER REQUEST
     // =========================================================
 
-    suspend fun applyForProviderWithDetails(
-        userId: String,
-        email: String,
-        name: String,
-        serviceType: String,
-        description: String,
-        experience: String,
-        latitude: Double,
-        longitude: Double,
-        verificationDocUrl: String
-    ): Result<String> {
-
+    suspend fun submitProviderRequest(provider: Provider): Result<String> {
         return try {
-
-            val data = hashMapOf(
-                "userId" to userId,
-                "email" to email,
-                "name" to name,
-                "serviceType" to serviceType,
-                "description" to description,
-                "experience" to experience,
-                "latitude" to latitude,
-                "longitude" to longitude,
-                "verificationDocUrl" to verificationDocUrl,
-                "status" to "PENDING",
-                "createdAt" to System.currentTimeMillis(),
-                "rating" to 0.0
+            val data = mapOf(
+                "userId" to provider.id,
+                "name" to provider.name,
+                "serviceType" to provider.serviceType,
+                "description" to provider.description,
+                "experience" to provider.experience,
+                "latitude" to provider.latitude,
+                "longitude" to provider.longitude,
+                "verificationDocUrl" to provider.verificationDocUrl,
+                "profileImageUrl" to provider.profileImageUrl,
+                "status" to "PENDING", // Initial state
+                "rating" to 0.0,
+                "lastProfileUpdate" to 0L
             )
 
             db.collection("provider_requests")
-                .document(userId)
+                .document(provider.id)
                 .set(data)
                 .await()
 
-            Result.success("Application submitted successfully")
-
+            Result.success("Request submitted successfully")
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     // =========================================================
-    // 🔥 FETCH APPROVED PROVIDERS
+    // 🔥 FETCH ALL APPROVED PROVIDERS
     // =========================================================
 
-    suspend fun getApprovedProviders(): Result<List<Provider>> {
+    suspend fun fetchAllApprovedProviders(): Result<List<Provider>> {
         return try {
-            val snapshot = db.collection("provider_requests")
+            val querySnapshot = db.collection("provider_requests")
                 .whereEqualTo("status", "APPROVED")
                 .get()
                 .await()
 
-            val providers = snapshot.documents.mapNotNull { doc ->
+            val providerList = querySnapshot.documents.mapNotNull { doc ->
                 var pImage = doc.getString("profileImageUrl")
                 if (pImage.isNullOrBlank()) {
                     pImage = doc.getString("profileImage")
@@ -74,7 +61,7 @@ class ProviderRepository {
                         val userDoc = db.collection("users").document(doc.id).get().await()
                         pImage = userDoc.getString("profileImageUrl")
                     } catch (e: Exception) {
-                        // ignore if user doc does not exist
+                        // ignore
                     }
                 }
 
@@ -92,9 +79,7 @@ class ProviderRepository {
                     rating = doc.getDouble("rating") ?: 0.0
                 )
             }
-
-            Result.success(providers)
-
+            Result.success(providerList)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -150,6 +135,10 @@ class ProviderRepository {
     suspend fun updateProviderDetails(userId: String, updates: Map<String, Any>): Result<String> {
         return try {
             db.collection("provider_requests").document(userId).update(updates).await()
+            val updatedName = updates["name"] as? String
+            if (!updatedName.isNullOrBlank()) {
+                db.collection("users").document(userId).update("name", updatedName).await()
+            }
             Result.success("Profile updated successfully")
         } catch (e: Exception) {
             Result.failure(e)
