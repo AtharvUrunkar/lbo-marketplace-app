@@ -14,9 +14,9 @@ import kotlinx.coroutines.launch
 
 class ProviderViewModel : ViewModel() {
 
-    // =========================================================
+    // =====================================================
     // 🔥 REPOSITORIES
-    // =========================================================
+    // =====================================================
 
     private val repo =
         ProviderRepository()
@@ -24,33 +24,38 @@ class ProviderViewModel : ViewModel() {
     private val cloudinaryRepo =
         CloudinaryRepository()
 
-    // =========================================================
+    // =====================================================
     // 🔥 APPLY STATE
-    // =========================================================
+    // =====================================================
 
     var applyState by mutableStateOf("")
         private set
 
-    // =========================================================
-    // 🔥 PROVIDERS LIST
-    // =========================================================
+    // =====================================================
+    // 🔥 PROVIDERS
+    // =====================================================
 
     var providers by mutableStateOf<List<Provider>>(
         emptyList()
     )
         private set
 
-    // 🔥 LOADING STATE FOR SKELETONS
+    // =====================================================
+    // 🔥 LOADING
+    // =====================================================
+
     var isLoading by mutableStateOf(false)
         private set
 
-    // =========================================================
+    // =====================================================
     // 🔥 FETCH PROVIDERS
-    // =========================================================
+    // =====================================================
 
     fun fetchProviders() {
 
         viewModelScope.launch {
+
+            isLoading = true
 
             val result =
                 repo.getApprovedProviders()
@@ -59,58 +64,125 @@ class ProviderViewModel : ViewModel() {
                 result.getOrElse {
                     emptyList()
                 }
+
+            isLoading = false
         }
     }
 
-    // =========================================================
-    // 🔥 CURRENT PROVIDER PROFILE (FOR DASHBOARD/EDIT)
-    // =========================================================
+    // =====================================================
+    // 🔥 CURRENT PROFILE
+    // =====================================================
 
     var currentProviderProfile by mutableStateOf<Provider?>(null)
         private set
 
-    fun fetchProviderProfile(userId: String) {
+    fun fetchProviderProfile(
+        userId: String
+    ) {
+
         viewModelScope.launch {
-            val result = repo.getProviderDetails(userId)
-            currentProviderProfile = result.getOrNull()
+
+            val result =
+                repo.getProviderDetails(
+                    userId
+                )
+
+            currentProviderProfile =
+                result.getOrNull()
         }
     }
 
+    // =====================================================
+    // 🔥 UPDATE PROFILE
+    // =====================================================
+
     fun updateProviderProfile(
+
         userId: String,
+
         name: String,
+
         serviceType: String,
+
         description: String,
+
         experience: String,
+
         latitude: Double,
+
         longitude: Double,
-        onComplete: (Boolean, String) -> Unit
+
+        city: String,
+
+        area: String,
+
+        fullAddress: String,
+
+        onComplete: (
+            Boolean,
+            String
+        ) -> Unit
     ) {
+
         viewModelScope.launch {
+
             val updates = mapOf(
+
                 "name" to name,
+
                 "serviceType" to serviceType,
+
                 "description" to description,
+
                 "experience" to experience,
+
                 "latitude" to latitude,
-                "longitude" to longitude
+
+                "longitude" to longitude,
+
+                "city" to city,
+
+                "area" to area,
+
+                "fullAddress" to fullAddress
             )
-            val result = repo.updateProviderDetails(userId, updates)
+
+            val result =
+                repo.updateProviderDetails(
+                    userId,
+                    updates
+                )
+
             if (result.isSuccess) {
-                // Refresh local profile state
-                fetchProviderProfile(userId)
-                // Also refresh global providers list so users see it immediately if they are in the same session
-                fetchProviders() 
-                onComplete(true, "Profile updated successfully")
+
+                fetchProviderProfile(
+                    userId
+                )
+
+                fetchProviders()
+
+                onComplete(
+                    true,
+                    "Profile updated successfully"
+                )
+
             } else {
-                onComplete(false, result.exceptionOrNull()?.message ?: "Update failed")
+
+                onComplete(
+
+                    false,
+
+                    result.exceptionOrNull()
+                        ?.message
+                        ?: "Update failed"
+                )
             }
         }
     }
 
-    // =========================================================
+    // =====================================================
     // 🔥 FILE SIZE CHECK
-    // =========================================================
+    // =====================================================
 
     private fun getFileSizeInMB(
         context: Context,
@@ -133,20 +205,36 @@ class ProviderViewModel : ViewModel() {
                 (1024 * 1024)
     }
 
-    // =========================================================
+    // =====================================================
     // 🔥 APPLY PROVIDER
-    // =========================================================
+    // =====================================================
 
     fun applyWithDetails(
+
         context: Context,
+
         userId: String,
+
         email: String,
+
         name: String,
+
         serviceType: String,
+
         description: String,
+
         experience: String,
+
         latitude: Double,
+
         longitude: Double,
+
+        city: String,
+
+        area: String,
+
+        fullAddress: String,
+
         verificationDocUri: Uri
     ) {
 
@@ -154,9 +242,9 @@ class ProviderViewModel : ViewModel() {
 
             try {
 
-                // =============================================
-                // 🔥 DOCUMENT SIZE CHECK
-                // =============================================
+                // =========================================
+                // 🔥 FILE SIZE CHECK
+                // =========================================
 
                 val documentSize =
                     getFileSizeInMB(
@@ -164,7 +252,6 @@ class ProviderViewModel : ViewModel() {
                         verificationDocUri
                     )
 
-                // 🔥 4MB LIMIT
                 if (documentSize > 4) {
 
                     applyState =
@@ -173,20 +260,22 @@ class ProviderViewModel : ViewModel() {
                     return@launch
                 }
 
-                // =============================================
+                // =========================================
                 // 🔥 DOCUMENT UPLOAD
-                // =============================================
+                // =========================================
 
                 applyState =
                     "Uploading verification document..."
 
                 val documentFile =
+
                     cloudinaryRepo.uriToFile(
                         context,
                         verificationDocUri
                     )
 
                 val documentResult =
+
                     cloudinaryRepo.uploadFile(
                         documentFile
                     )
@@ -194,39 +283,62 @@ class ProviderViewModel : ViewModel() {
                 if (documentResult.isFailure) {
 
                     applyState =
+
                         documentResult
                             .exceptionOrNull()
                             ?.message
+
                             ?: "Document upload failed"
 
                     return@launch
                 }
 
                 val documentUrl =
-                    documentResult.getOrNull()
+
+                    documentResult
+                        .getOrNull()
+
                         ?: ""
 
-                // =============================================
+                // =========================================
                 // 🔥 SAVE TO FIRESTORE
-                // =============================================
+                // =========================================
 
                 applyState =
                     "Submitting application..."
 
                 val result =
+
                     repo.applyForProviderWithDetails(
+
                         userId = userId,
+
                         email = email,
+
                         name = name,
+
                         serviceType = serviceType,
+
                         description = description,
+
                         experience = experience,
+
                         latitude = latitude,
+
                         longitude = longitude,
-                        verificationDocUrl = documentUrl
+
+                        city = city,
+
+                        area = area,
+
+                        fullAddress = fullAddress,
+
+                        verificationDocUrl =
+                            documentUrl
                     )
 
                 applyState =
+
                     result.fold(
 
                         onSuccess = {
@@ -243,6 +355,7 @@ class ProviderViewModel : ViewModel() {
             } catch (e: Exception) {
 
                 applyState =
+
                     e.message
                         ?: "Something went wrong"
             }

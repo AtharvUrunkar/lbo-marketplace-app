@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Menu
@@ -126,7 +126,7 @@ fun ProviderDashboard(
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.List, contentDescription = "Updates") },
+                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Updates") },
                     label = { Text("Updates") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color.Black,
