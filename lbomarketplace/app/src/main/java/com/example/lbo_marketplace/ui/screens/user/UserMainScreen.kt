@@ -44,13 +44,6 @@ import coil.compose.AsyncImage
 import java.io.File
 import java.io.FileOutputStream
 
-/**
- * Main User Entry Screen.
- * 
- * FIXES:
- * - Header Consistency: Unified statusBarsPadding for BOTH sticky and movable headers so they match perfectly.
- * - Updated Deprecated Icons (List/Chat).
- */
 @Composable
 fun UserMainScreen(
     authViewModel: AuthViewModel = viewModel()
@@ -108,7 +101,7 @@ fun UserMainScreen(
     if (selectedProviderId != null) {
         val selectedProvider = providerViewModel.providers.find { it.id == selectedProviderId }
         val pName = selectedProvider?.name ?: "Provider"
-        
+
         BookingScreen(
             providerId = selectedProviderId!!,
             onBack = { selectedProviderId = null },
@@ -142,14 +135,24 @@ fun UserMainScreen(
                 experience: String,
                 lat: Double,
                 lng: Double,
+                city: String,
+                area: String,
+                fullAddress: String,
                 verificationDocUri: Uri ->
             user?.let {
-
                 providerViewModel.applyWithDetails(
                     context = context,
-                    userId = it.uid, email = it.email ?: "", name = name,
-                    serviceType = serviceType, description = description, experience = experience,
-                    latitude = lat, longitude = lng,
+                    userId = it.uid,
+                    email = it.email ?: "",
+                    name = name,
+                    serviceType = serviceType,
+                    description = description,
+                    experience = experience,
+                    latitude = lat,
+                    longitude = lng,
+                    city = city,
+                    area = area,
+                    fullAddress = fullAddress,
                     verificationDocUri = verificationDocUri
                 )
             }
@@ -168,10 +171,30 @@ fun UserMainScreen(
         },
         bottomBar = {
             NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
-                NavigationBarItem(selected = selectedTab == 0, onClick = { selectedTab = 0 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") })
-                NavigationBarItem(selected = selectedTab == 1, onClick = { selectedTab = 1 }, icon = { Icon(Icons.Default.Notifications, null) }, label = { Text("Community") })
-                NavigationBarItem(selected = selectedTab == 2, onClick = { selectedTab = 2 }, icon = { Icon(Icons.AutoMirrored.Filled.List, null) }, label = { Text("Bookings") })
-                NavigationBarItem(selected = selectedTab == 3, onClick = { selectedTab = 3 }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Profile") })
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.Home, null) },
+                    label = { Text("Home") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.Notifications, null) },
+                    label = { Text("Community") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.AutoMirrored.Filled.List, null) },
+                    label = { Text("Bookings") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = { Icon(Icons.Default.Person, null) },
+                    label = { Text("Profile") }
+                )
             }
         },
         floatingActionButton = {
@@ -185,7 +208,7 @@ fun UserMainScreen(
         }
     ) { padding ->
         val contentPadding = if (selectedTab == 0) padding else PaddingValues(bottom = padding.calculateBottomPadding())
-        
+
         Box(modifier = Modifier.padding(contentPadding).background(Color.White)) {
             AnimatedContent(
                 targetState = selectedTab,
@@ -202,8 +225,16 @@ fun UserMainScreen(
         }
     }
 
-    if (showAboutDialog) GlobalMenuDialog("About LBO", "LBO – Together We Grow 🤝\n\nConnecting local experts with our community seamlessly.", { showAboutDialog = false })
-    if (showFAQDialog) GlobalMenuDialog("FAQ", "Q: How do I book?\nA: Search and click 'Book Now'.\n\nQ: Is it free?\nA: App is free; pay the provider directly.", { showFAQDialog = false })
+    if (showAboutDialog) GlobalMenuDialog(
+        "About LBO",
+        "LBO – Together We Grow 🤝\n\nConnecting local experts with our community seamlessly.",
+        { showAboutDialog = false }
+    )
+    if (showFAQDialog) GlobalMenuDialog(
+        "FAQ",
+        "Q: How do I book?\nA: Search and click 'Book Now'.\n\nQ: Is it free?\nA: App is free; pay the provider directly.",
+        { showFAQDialog = false }
+    )
     if (showHelpDialog) {
         AlertDialog(
             onDismissRequest = { showHelpDialog = false },
@@ -211,14 +242,19 @@ fun UserMainScreen(
             text = { Text("If you have some doubts contact admin or refered person") },
             confirmButton = {
                 Button(
-                    onClick = { 
+                    onClick = {
                         showHelpDialog = false
-                        uriHandler.openUri("mailto:lbo.org.ask@gmail.com") 
+                        uriHandler.openUri("mailto:lbo.org.ask@gmail.com")
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
                 ) { Text("Contact") }
             },
-            dismissButton = { TextButton(onClick = { showHelpDialog = false }, colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)) { Text("Close") } },
+            dismissButton = {
+                TextButton(
+                    onClick = { showHelpDialog = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
+                ) { Text("Close") }
+            },
             shape = RoundedCornerShape(24.dp),
             containerColor = Color.White
         )
@@ -226,25 +262,54 @@ fun UserMainScreen(
 }
 
 @Composable
-fun Header(onMenuClick: () -> Unit, menuExpanded: Boolean, onDismissMenu: () -> Unit, onAboutClick: () -> Unit, onFAQClick: () -> Unit, onHelpClick: () -> Unit) {
+fun Header(
+    onMenuClick: () -> Unit,
+    menuExpanded: Boolean,
+    onDismissMenu: () -> Unit,
+    onAboutClick: () -> Unit,
+    onFAQClick: () -> Unit,
+    onHelpClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .statusBarsPadding() // ✅ ALWAYS USE STATUS BAR PADDING FOR CONSISTENCY
+            .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Spacer(modifier = Modifier.width(48.dp))
-        Box(modifier = Modifier.weight(1f).height(50.dp), contentAlignment = Alignment.Center) {
-            Image(painter = painterResource(id = R.drawable.logo), contentDescription = "Logo", modifier = Modifier.height(40.dp), contentScale = ContentScale.Fit)
+        Box(
+            modifier = Modifier.weight(1f).height(50.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Logo",
+                modifier = Modifier.height(40.dp),
+                contentScale = ContentScale.Fit
+            )
         }
         Box(contentAlignment = Alignment.TopEnd) {
             IconButton(onClick = onMenuClick) { Icon(Icons.Default.Menu, null) }
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = onDismissMenu, shape = RoundedCornerShape(16.dp), modifier = Modifier.background(Color.White)) {
-                DropdownMenuItem(text = { Text("About", fontWeight = FontWeight.Bold) }, onClick = { onDismissMenu(); onAboutClick() })
-                DropdownMenuItem(text = { Text("FAQ", fontWeight = FontWeight.Bold) }, onClick = { onDismissMenu(); onFAQClick() })
-                DropdownMenuItem(text = { Text("Help", color = Color(0xFF6C63FF), fontWeight = FontWeight.Bold) }, onClick = { onDismissMenu(); onHelpClick() })
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = onDismissMenu,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.background(Color.White)
+            ) {
+                DropdownMenuItem(
+                    text = { Text("About", fontWeight = FontWeight.Bold) },
+                    onClick = { onDismissMenu(); onAboutClick() }
+                )
+                DropdownMenuItem(
+                    text = { Text("FAQ", fontWeight = FontWeight.Bold) },
+                    onClick = { onDismissMenu(); onFAQClick() }
+                )
+                DropdownMenuItem(
+                    text = { Text("Help", color = Color(0xFF6C63FF), fontWeight = FontWeight.Bold) },
+                    onClick = { onDismissMenu(); onHelpClick() }
+                )
             }
         }
     }
@@ -252,7 +317,19 @@ fun Header(onMenuClick: () -> Unit, menuExpanded: Boolean, onDismissMenu: () -> 
 
 @Composable
 fun GlobalMenuDialog(title: String, content: String, onClose: () -> Unit) {
-    AlertDialog(onDismissRequest = onClose, title = { Text(title, fontWeight = FontWeight.Bold) }, text = { Text(content) }, confirmButton = { TextButton(onClick = onClose, colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)) { Text("Close") } }, shape = RoundedCornerShape(24.dp), containerColor = Color.White)
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = { Text(content) },
+        confirmButton = {
+            TextButton(
+                onClick = onClose,
+                colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
+            ) { Text("Close") }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = Color.White
+    )
 }
 
 @Composable
@@ -295,32 +372,46 @@ fun ProviderDetailsScreen(
                 )
             } else {
                 val initials = provider.name.take(2).uppercase()
-                Text(initials, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = Color.LightGray)
+                Text(
+                    initials,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.LightGray
+                )
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(provider.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = Color.Black)
+        Text(
+            provider.name,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.Black
+        )
         Text(provider.serviceType, style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
-        
+
         Spacer(modifier = Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Star, contentDescription = "Rating", tint = Color(0xFFFFC107), modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(4.dp))
             Text("${provider.rating} / 5.0", fontWeight = FontWeight.Bold, color = Color.Black)
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
         HorizontalDivider(color = Color(0xFFEEEEEE))
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
             Text("EXPERIENCE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
             Text(provider.experience, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
             Spacer(modifier = Modifier.height(16.dp))
             Text("ABOUT", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
-            Text(provider.description.ifBlank { "No description provided." }, style = MaterialTheme.typography.bodyMedium, color = Color.DarkGray)
+            Text(
+                provider.description.ifBlank { "No description provided." },
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray
+            )
         }
-        
+
         Button(
             onClick = onBookNow,
             modifier = Modifier.fillMaxWidth().height(56.dp),
