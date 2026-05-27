@@ -228,8 +228,7 @@ class BookingRepository {
 
     suspend fun updateBookingStatus(bookingId: String, status: String): Result<String> {
         return try {
-
-            tus).await()
+            db.collection("bookings").document(bookingId).update("status", status).await()
             Result.success("Booking $status")
         } catch (e: Exception) {
             Result.failure(e)

@@ -6,6 +6,7 @@ import android.location.Geocoder
 import android.location.Location
 import com.google.android.gms.location.LocationServices
 import java.util.Locale
+import com.example.lbo_marketplace.auth.AuthViewModel
 
 /**
  * =========================================================
@@ -49,6 +50,75 @@ fun getAddressFromLocation(
     } catch (e: Exception) {
         e.printStackTrace()
         LocationData(latitude = latitude, longitude = longitude)
+    }
+}
+
+/**
+ * =========================================================
+ * 🔥 GET LAT LNG FROM ADDRESS (FALLBACK GEOCODING)
+ * =========================================================
+ * 
+ * Resolves a visual text address (e.g., city, area, pincode) into GPS coordinates.
+ */
+fun getCoordinatesFromAddress(
+    context: Context,
+    addressString: String
+): Pair<Double, Double>? {
+    if (addressString.isBlank()) return null
+    return try {
+        val geocoder = Geocoder(context, Locale.getDefault())
+        val addresses = geocoder.getFromLocationName(addressString, 1)
+        if (!addresses.isNullOrEmpty()) {
+            val address = addresses[0]
+            Pair(address.latitude, address.longitude)
+        } else {
+            null
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+/**
+ * =========================================================
+ * 🔥 FALLBACK TO FIRESTORE / ADDRESS LOCATION
+ * =========================================================
+ * 
+ * Fetches user profile coordinates, falling back to geocoding if coordinates are 0.0.
+ */
+fun fallbackToAddressLocation(
+    userId: String?,
+    authViewModel: AuthViewModel,
+    context: Context,
+    onResult: (Double, Double) -> Unit
+) {
+    if (userId == null) {
+        onResult(0.0, 0.0)
+        return
+    }
+    authViewModel.fetchUserLocation(userId) { lat, lng, city, area, address ->
+        if (lat != 0.0 && lng != 0.0) {
+            onResult(lat, lng)
+        } else {
+            val addressParts = listOfNotNull(
+                address.trim().ifBlank { null },
+                area.trim().ifBlank { null },
+                city.trim().ifBlank { null }
+            )
+            val addressQuery = addressParts.joinToString(", ")
+            
+            if (addressQuery.isNotEmpty()) {
+                val coords = getCoordinatesFromAddress(context, addressQuery)
+                if (coords != null) {
+                    onResult(coords.first, coords.second)
+                } else {
+                    onResult(0.0, 0.0)
+                }
+            } else {
+                onResult(0.0, 0.0)
+            }
+        }
     }
 }
 

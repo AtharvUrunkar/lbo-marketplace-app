@@ -9,6 +9,7 @@ import android.os.Environment
 import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -63,6 +64,43 @@ fun UserMainScreen(
     val bookingViewModel: BookingViewModel = viewModel()
     val user = FirebaseAuth.getInstance().currentUser
     var customerName by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+
+    var userLat by remember { mutableStateOf<Double?>(null) }
+    var userLng by remember { mutableStateOf<Double?>(null) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            com.example.lbo_marketplace.utils.fetchProviderLocation(context) { lat, lng ->
+                if (lat != 0.0 && lng != 0.0) {
+                    userLat = lat
+                    userLng = lng
+                } else {
+                    com.example.lbo_marketplace.utils.fallbackToAddressLocation(
+                        userId = user?.uid,
+                        authViewModel = authViewModel,
+                        context = context
+                    ) { fallbackLat, fallbackLng ->
+                        userLat = fallbackLat
+                        userLng = fallbackLng
+                    }
+                }
+            }
+        } else {
+            com.example.lbo_marketplace.utils.fallbackToAddressLocation(
+                userId = user?.uid,
+                authViewModel = authViewModel,
+                context = context
+            ) { fallbackLat, fallbackLng ->
+                userLat = fallbackLat
+                userLng = fallbackLng
+            }
+        }
+    }
+
     LaunchedEffect(user?.uid) {
         user?.uid?.let { uid ->
             com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("users").document(uid).get()
@@ -70,9 +108,40 @@ fun UserMainScreen(
                     customerName = doc.getString("name") ?: ""
                 }
         }
+
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            com.example.lbo_marketplace.utils.fetchProviderLocation(context) { lat, lng ->
+                if (lat != 0.0 && lng != 0.0) {
+                    userLat = lat
+                    userLng = lng
+                } else {
+                    com.example.lbo_marketplace.utils.fallbackToAddressLocation(
+                        userId = user?.uid,
+                        authViewModel = authViewModel,
+                        context = context
+                    ) { fallbackLat, fallbackLng ->
+                        userLat = fallbackLat
+                        userLng = fallbackLng
+                    }
+                }
+            }
+        } else {
+            com.example.lbo_marketplace.utils.fallbackToAddressLocation(
+                userId = user?.uid,
+                authViewModel = authViewModel,
+                context = context
+            ) { fallbackLat, fallbackLng ->
+                userLat = fallbackLat
+                userLng = fallbackLng
+            }
+            locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        }
     }
-    val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
+
 
     @Composable
     fun GlobalHeader() {
@@ -97,6 +166,8 @@ fun UserMainScreen(
         if (provider != null) {
             ProviderDetailsScreen(
                 provider = provider,
+                userLat = userLat,
+                userLng = userLng,
                 onBack = { viewingProviderId = null },
                 onBookNow = {
                     selectedProviderId = viewingProviderId
@@ -226,7 +297,10 @@ fun UserMainScreen(
                 label = ""
             ) { targetTab ->
                 when (targetTab) {
-                    0 -> HomeTab(onBookClick = { viewingProviderId = it })
+                    0 -> HomeTab(
+                        onBookClick = { viewingProviderId = it },
+                        authViewModel = authViewModel
+                    )
                     1 -> CommunityTab(header = { GlobalHeader() })
                     2 -> BookingTab(bookingViewModel = bookingViewModel, header = { GlobalHeader() })
                     3 -> ProfileTab(authViewModel = authViewModel, onApplyClick = { showApplyScreen = true }, header = { GlobalHeader() })
@@ -346,6 +420,8 @@ fun GlobalMenuDialog(title: String, content: String, onClose: () -> Unit) {
 @Composable
 fun ProviderDetailsScreen(
     provider: com.example.lbo_marketplace.data.model.Provider,
+    userLat: Double?,
+    userLng: Double?,
     onBack: () -> Unit,
     onBookNow: () -> Unit
 ) {
@@ -405,6 +481,23 @@ fun ProviderDetailsScreen(
             Icon(Icons.Default.Star, contentDescription = "Rating", tint = Color(0xFFFFC107), modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(4.dp))
             Text("${provider.rating} / 5.0", fontWeight = FontWeight.Bold, color = Color.Black)
+        }
+
+        if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+            val dist = com.example.lbo_marketplace.utils.calculateDistance(
+                userLat,
+                userLng,
+                provider.latitude,
+                provider.longitude
+            )
+            val formatted = com.example.lbo_marketplace.utils.formatDistance(dist)
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "📍 $formatted away",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))

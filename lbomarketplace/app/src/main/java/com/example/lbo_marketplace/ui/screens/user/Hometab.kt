@@ -64,10 +64,15 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.lbo_marketplace.R
 import com.example.lbo_marketplace.auth.ProviderViewModel
+import com.example.lbo_marketplace.auth.AuthViewModel
 import com.example.lbo_marketplace.data.model.Provider
 import com.example.lbo_marketplace.utils.calculateDistance
 import com.example.lbo_marketplace.utils.formatDistance
+import com.example.lbo_marketplace.utils.fetchProviderLocation
+import com.example.lbo_marketplace.utils.getAddressFromLocation
+import com.example.lbo_marketplace.utils.fallbackToAddressLocation
 import com.google.android.gms.location.LocationServices
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -83,14 +88,14 @@ data class BannerItem(
 @Composable
 fun HomeTab(
     onBookClick: (String) -> Unit,
-    viewModel: ProviderViewModel = viewModel()
+    viewModel: ProviderViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
 
     val context = LocalContext.current
-
     val providers = viewModel.providers
-
     val isLoading = viewModel.isLoading
+    val currentUser = FirebaseAuth.getInstance().currentUser
 
     var searchQuery by remember {
         mutableStateOf("")
@@ -114,126 +119,108 @@ fun HomeTab(
         mutableStateOf<Double?>(null)
     }
 
-    val locationPermissionLauncher =
-        rememberLauncherForActivityResult(
-            contract =
-                ActivityResultContracts
-                    .RequestPermission()
-        ) { isGranted ->
-
-            if (isGranted) {
-
-                fetchProviderLocation(
-                    context
-                ) { lat: Double, lng: Double ->
-
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            fetchProviderLocation(context) { lat: Double, lng: Double ->
+                if (lat != 0.0 && lng != 0.0) {
                     userLat = lat
-
                     userLng = lng
+                    currentUser?.uid?.let { uid ->
+                        val locData = getAddressFromLocation(context, lat, lng)
+                        authViewModel.updateUserLocation(
+                            userId = uid,
+                            latitude = lat,
+                            longitude = lng,
+                            city = locData.city,
+                            area = locData.area,
+                            fullAddress = locData.fullAddress
+                        )
+                    }
+                } else {
+                    fallbackToAddressLocation(
+                        userId = currentUser?.uid,
+                        authViewModel = authViewModel,
+                        context = context
+                    ) { fallbackLat, fallbackLng ->
+                        userLat = fallbackLat
+                        userLng = fallbackLng
+                    }
                 }
             }
-        }
-
-    LaunchedEffect(Unit) {
-
-        viewModel.fetchProviders()
-
-        if (
-
-            ContextCompat.checkSelfPermission(
-
-                context,
-
-                Manifest.permission
-                    .ACCESS_FINE_LOCATION
-
-            ) == PackageManager.PERMISSION_GRANTED
-
-        ) {
-
-            fetchProviderLocation(
-                context
-            ) { lat: Double, lng: Double ->
-
-                userLat = lat
-
-                userLng = lng
-            }
-
         } else {
-
-            locationPermissionLauncher.launch(
-                Manifest.permission
-                    .ACCESS_FINE_LOCATION
-            )
+            fallbackToAddressLocation(
+                userId = currentUser?.uid,
+                authViewModel = authViewModel,
+                context = context
+            ) { fallbackLat, fallbackLng ->
+                userLat = fallbackLat
+                userLng = fallbackLng
+            }
         }
     }
 
-    val filteredProviders = providers
+    LaunchedEffect(Unit) {
+        viewModel.fetchProviders()
 
-        .filter { provider ->
-
-            val matchesSearch =
-
-                provider.serviceType.contains(
-                    searchQuery,
-                    ignoreCase = true
-                ) ||
-
-                        provider.name.contains(
-                            searchQuery,
-                            ignoreCase = true
-                        )
-
-            val withinRange =
-
-                if (
-                    userLat != null &&
-                    userLng != null
-                ) {
-
-                    val distance =
-
-                        calculateDistance(
-
-                            userLat!!,
-                            userLng!!,
-
-                            provider.latitude,
-                            provider.longitude
-                        )
-
-                    distance <= 18000
-
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            fetchProviderLocation(context) { lat: Double, lng: Double ->
+                if (lat != 0.0 && lng != 0.0) {
+                    userLat = lat
+                    userLng = lng
                 } else {
-
-                    true
+                    fallbackToAddressLocation(
+                        userId = currentUser?.uid,
+                        authViewModel = authViewModel,
+                        context = context
+                    ) { fallbackLat, fallbackLng ->
+                        userLat = fallbackLat
+                        userLng = fallbackLng
+                    }
                 }
-
-            matchesSearch && withinRange
-        }
-
-        .sortedBy { provider ->
-
-            if (
-                userLat != null &&
-                userLng != null
-            ) {
-
-                calculateDistance(
-
-                    userLat!!,
-                    userLng!!,
-
-                    provider.latitude,
-                    provider.longitude
-                )
-
-            } else {
-
-                Float.MAX_VALUE
             }
+        } else {
+            fallbackToAddressLocation(
+                userId = currentUser?.uid,
+                authViewModel = authViewModel,
+                context = context
+            ) { fallbackLat, fallbackLng ->
+                userLat = fallbackLat
+                userLng = fallbackLng
+            }
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
+    }
+
+
+    val filteredProviders = providers
+        .filter { provider ->
+            provider.serviceType.contains(searchQuery, ignoreCase = true) ||
+                    provider.name.contains(searchQuery, ignoreCase = true)
+        }
+        .sortedWith(
+            compareBy<Provider> { provider ->
+                if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+                    val distance = calculateDistance(userLat!!, userLng!!, provider.latitude, provider.longitude)
+                    if (distance <= 18000) 0 else 1
+                } else {
+                    1
+                }
+            }.thenBy { provider ->
+                if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+                    calculateDistance(userLat!!, userLng!!, provider.latitude, provider.longitude)
+                } else {
+                    Float.MAX_VALUE
+                }
+            }.thenByDescending { provider ->
+                provider.rating
+            }
+        )
 
     val bannerItems = remember {
 
@@ -470,126 +457,111 @@ fun HomeTab(
 }
 
 @Composable
-fun BannerSlider(items: List<BannerItem>) {
-    if (items.isEmpty()) return
-    val pagerState = rememberPagerState(pageCount = { items.size })
-    val coroutineScope = rememberCoroutineScope()
-    val videoFailedMap = remember { mutableStateMapOf<Int, Boolean>() }
-
-    LaunchedEffect(pagerState.currentPage) {
-        val currentItem = items[pagerState.currentPage]
-        val isVideoMode = currentItem.isVideo && !(videoFailedMap[pagerState.currentPage] ?: false)
-        if (!isVideoMode) {
-            delay(3500L)
-            coroutineScope.launch { pagerState.animateScrollToPage((pagerState.currentPage + 1) % items.size) }
-        }
-    }
-    Box(modifier = Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(20.dp)).background(Color.White)) {
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-            val item = items[page]
-            val hasVideoFailed = videoFailedMap[page] ?: false
-            if (item.isVideo && !hasVideoFailed) {
-                DynamicVideoPlayer(
-                    url = item.videoUrl, 
-                    localRes = item.localVideoRes, 
-                    isActive = pagerState.currentPage == page, 
-                    onError = { videoFailedMap[page] = true }, 
-                    onComplete = { coroutineScope.launch { pagerState.animateScrollToPage((page + 1) % items.size) } }
+fun ProviderGridCard(
+    provider: Provider,
+    onBookClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    userLat: Double? = null,
+    userLng: Double? = null
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .background(Color.White)
+            .clickable { onBookClick(provider.id) }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFFF8F8F8))
+        ) {
+            val imageUrl = provider.profileImage ?: provider.profileImageUrl
+            if (!imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             } else {
+                InitialsAvatar(name = provider.name)
+            }
 
-                InitialsAvatar(
-                    provider.name
-                )
+            // Rating Badge Overlay
+            if (provider.rating > 0.0) {
+                Surface(
+                    color = Color.White.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(topStart = 16.dp, bottomEnd = 16.dp),
+                    modifier = Modifier.align(Alignment.TopStart)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Rating",
+                            tint = Color(0xFFFFC107),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = String.format(java.util.Locale.US, "%.1f", provider.rating),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                }
             }
         }
 
-        Spacer(
-            modifier =
-                Modifier.height(8.dp)
-        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-
             text = provider.name,
-
-            style =
-                MaterialTheme
-                    .typography
-                    .titleMedium,
-
-            fontWeight =
-                FontWeight.Bold,
-
-            maxLines = 1
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            color = Color.Black
         )
 
         Text(
-
-            text =
-                provider.serviceType,
-
-            style =
-                MaterialTheme
-                    .typography
-                    .bodyMedium,
-
+            text = provider.serviceType,
+            style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray,
-
             maxLines = 1
         )
 
-        if (
-            userLat != null &&
-            userLng != null
-        ) {
-
-            val distance =
-
-                calculateDistance(
-
-                    userLat,
-                    userLng,
-
-                    provider.latitude,
-                    provider.longitude
-                )
-
+        if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+            val distance = calculateDistance(
+                userLat,
+                userLng,
+                provider.latitude,
+                provider.longitude
+            )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-
-                text =
-                    "📍 ${formatDistance(distance)} away",
-
-                style =
-                    MaterialTheme
-                        .typography
-                        .bodySmall,
-
-                color = Color.Gray
+                text = "📍 ${formatDistance(distance)} away",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                maxLines = 1
             )
         }
 
-        Spacer(
-            modifier =
-                Modifier.height(8.dp)
-        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
-
-            onClick = {
-                onBookClick(provider.id)
-            },
-
-            modifier =
-                Modifier.fillMaxWidth(),
-
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = Color.Black
-                )
+            onClick = { onBookClick(provider.id) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
         ) {
-
-            Text("View Profile")
+            Text("View Profile", fontSize = 12.sp, color = Color.White)
         }
     }
 }

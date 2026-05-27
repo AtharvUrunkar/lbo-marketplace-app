@@ -9,7 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lbo_marketplace.data.model.Provider
 import com.example.lbo_marketplace.data.repository.CloudinaryRepository
-import com.example.lbo_marketplace.data.repository.ProviderRepository
+import com.example.lbo_marketplace.repository.ProviderRepository
 import kotlinx.coroutines.launch
 
 class ProviderViewModel : ViewModel() {
@@ -181,6 +181,34 @@ class ProviderViewModel : ViewModel() {
     }
 
     // =====================================================
+    // 🔥 UPDATE PROVIDER LOCATION ONLY
+    // =====================================================
+
+    fun updateProviderLocationOnly(
+        userId: String,
+        latitude: Double,
+        longitude: Double,
+        city: String,
+        area: String,
+        fullAddress: String
+    ) {
+        viewModelScope.launch {
+            try {
+                val updates = mapOf(
+                    "latitude" to latitude,
+                    "longitude" to longitude,
+                    "city" to city,
+                    "area" to area,
+                    "fullAddress" to fullAddress
+                )
+                repo.updateProviderDetails(userId, updates)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // =====================================================
     // 🔥 FILE SIZE CHECK
     // =====================================================
 
@@ -337,20 +365,11 @@ class ProviderViewModel : ViewModel() {
                             documentUrl
                     )
 
-                applyState =
-
-                    result.fold(
-
-                        onSuccess = {
-
-                            "Application submitted successfully"
-                        },
-
-                        onFailure = {
-
-                            it.message ?: "Failed"
-                        }
-                    )
+                applyState = if (result.isSuccess) {
+                    "Application submitted successfully"
+                } else {
+                    result.exceptionOrNull()?.message ?: "Failed"
+                }
 
             } catch (e: Exception) {
 

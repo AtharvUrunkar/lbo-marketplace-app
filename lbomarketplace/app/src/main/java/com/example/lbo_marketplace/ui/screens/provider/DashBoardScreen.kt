@@ -74,7 +74,8 @@ data class ProviderBannerItem(
 @Composable
 fun DashboardScreen(
     header: @Composable () -> Unit,
-    viewModel: ProviderViewModel = viewModel()
+    viewModel: ProviderViewModel = viewModel(),
+    authViewModel: com.example.lbo_marketplace.auth.AuthViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val providers = viewModel.providers
@@ -92,14 +93,46 @@ fun DashboardScreen(
 
     var userLat by remember { mutableStateOf<Double?>(null) }
     var userLng by remember { mutableStateOf<Double?>(null) }
+    val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
+    ) { isGranted: Boolean ->
         if (isGranted) {
-            getLocationLocal(context) { lat, lng ->
-                userLat = lat
-                userLng = lng
+            com.example.lbo_marketplace.utils.fetchProviderLocation(context) { lat, lng ->
+                if (lat != 0.0 && lng != 0.0) {
+                    userLat = lat
+                    userLng = lng
+                    currentUser?.uid?.let { uid ->
+                        val locData = com.example.lbo_marketplace.utils.getAddressFromLocation(context, lat, lng)
+                        viewModel.updateProviderLocationOnly(
+                            userId = uid,
+                            latitude = lat,
+                            longitude = lng,
+                            city = locData.city,
+                            area = locData.area,
+                            fullAddress = locData.fullAddress
+                        )
+                    }
+                } else {
+                    com.example.lbo_marketplace.utils.fallbackToAddressLocation(
+                        userId = currentUser?.uid,
+                        authViewModel = authViewModel,
+                        context = context
+                    ) { fallbackLat, fallbackLng ->
+                        userLat = fallbackLat
+                        userLng = fallbackLng
+                    }
+                }
+            }
+        } else {
+            com.example.lbo_marketplace.utils.fallbackToAddressLocation(
+                userId = currentUser?.uid,
+                authViewModel = authViewModel,
+                context = context
+            ) { fallbackLat, fallbackLng ->
+                userLat = fallbackLat
+                userLng = fallbackLng
             }
         }
     }
@@ -107,24 +140,61 @@ fun DashboardScreen(
     LaunchedEffect(Unit) {
         viewModel.fetchProviders()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            getLocationLocal(context) { lat, lng ->
-                userLat = lat
-                userLng = lng
+            com.example.lbo_marketplace.utils.fetchProviderLocation(context) { lat, lng ->
+                if (lat != 0.0 && lng != 0.0) {
+                    userLat = lat
+                    userLng = lng
+                    currentUser?.uid?.let { uid ->
+                        val locData = com.example.lbo_marketplace.utils.getAddressFromLocation(context, lat, lng)
+                        viewModel.updateProviderLocationOnly(
+                            userId = uid,
+                            latitude = lat,
+                            longitude = lng,
+                            city = locData.city,
+                            area = locData.area,
+                            fullAddress = locData.fullAddress
+                        )
+                    }
+                } else {
+                    com.example.lbo_marketplace.utils.fallbackToAddressLocation(
+                        userId = currentUser?.uid,
+                        authViewModel = authViewModel,
+                        context = context
+                    ) { fallbackLat, fallbackLng ->
+                        userLat = fallbackLat
+                        userLng = fallbackLng
+                    }
+                }
             }
         } else {
+            com.example.lbo_marketplace.utils.fallbackToAddressLocation(
+                userId = currentUser?.uid,
+                authViewModel = authViewModel,
+                context = context
+            ) { fallbackLat, fallbackLng ->
+                userLat = fallbackLat
+                userLng = fallbackLng
+            }
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
-    val filteredProviders = providers.filter {
-        it.serviceType.contains(searchQuery, ignoreCase = true) || 
-        it.name.contains(searchQuery, ignoreCase = true)
+    val filteredProviders = providers.filter { provider ->
+        provider.serviceType.contains(searchQuery, ignoreCase = true) || 
+                provider.name.contains(searchQuery, ignoreCase = true)
     }.sortedWith(
         compareBy<Provider> { provider ->
-            if (userLat != null && userLng != null) {
-                calculateDistanceLocal(userLat!!, userLng!!, provider.latitude, provider.longitude)
+            if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+                val distance = com.example.lbo_marketplace.utils.calculateDistance(userLat!!, userLng!!, provider.latitude, provider.longitude)
+                if (distance <= 18000) 0 else 1
             } else {
-                0f
+                1
+            }
+        }.thenBy { provider ->
+            if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+                com.example.lbo_marketplace.utils.calculateDistance(userLat!!, userLng!!, provider.latitude, provider.longitude)
+            } else {
+                Float.MAX_VALUE
             }
         }.thenByDescending { provider ->
             provider.rating
@@ -213,7 +283,13 @@ fun DashboardScreen(
                         } else {
                             ProviderFlowRow(modifier = Modifier.fillMaxWidth(), mainAxisSpacing = 16.dp, crossAxisSpacing = 16.dp) {
                                 filteredProviders.forEach { provider ->
-                                    ProviderGridCard(provider = provider, onDetailClick = { selectedDetailProvider = it }, modifier = Modifier.fillMaxWidth(0.45f))
+                                    ProviderGridCard(
+                                        provider = provider,
+                                        userLat = userLat,
+                                        userLng = userLng,
+                                        onDetailClick = { selectedDetailProvider = it },
+                                        modifier = Modifier.fillMaxWidth(0.45f)
+                                    )
                                 }
                             }
                         }
@@ -227,6 +303,8 @@ fun DashboardScreen(
         ProviderTopRatedPopup(
             providers = providers,
             isLoading = isLoading,
+            userLat = userLat,
+            userLng = userLng,
             onClose = { showTopRatedPopup = false },
             onDetailClick = { provider ->
                 showTopRatedPopup = false
@@ -238,6 +316,8 @@ fun DashboardScreen(
     if (selectedDetailProvider != null) {
         ProviderDetailPopup(
             provider = selectedDetailProvider!!,
+            userLat = userLat,
+            userLng = userLng,
             onClose = { selectedDetailProvider = null }
         )
     }
@@ -340,14 +420,21 @@ fun ProviderDynamicVideoPlayer(url: String?, localRes: Int?, isActive: Boolean, 
 }
 
 @Composable
-fun ProviderTopRatedPopup(providers: List<Provider>, isLoading: Boolean, onClose: () -> Unit, onDetailClick: (Provider) -> Unit) {
+fun ProviderTopRatedPopup(
+    providers: List<Provider>,
+    isLoading: Boolean,
+    userLat: Double?,
+    userLng: Double?,
+    onClose: () -> Unit,
+    onDetailClick: (Provider) -> Unit
+) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(modifier = Modifier.fillMaxSize().padding(20.dp), shape = RoundedCornerShape(28.dp), color = Color.White, tonalElevation = 0.dp) {
             Column(modifier = Modifier.padding(20.dp).background(Color.White)) {
                 Row(verticalAlignment = Alignment.CenterVertically) { Text("Top Rated Providers", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); IconButton(onClick = onClose) { Icon(Icons.Default.Close, null, tint = Color.Black) } }
                 Spacer(modifier = Modifier.height(16.dp))
                 if (isLoading) { Column { repeat(3) { ProviderSkeletonCard() } } } 
-                else { LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f)) { items(providers.sortedByDescending { it.rating }.take(10)) { provider -> ProviderGridCard(provider, onDetailClick) } } }
+                else { LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f)) { items(providers.sortedByDescending { it.rating }.take(10)) { provider -> ProviderGridCard(provider, userLat, userLng, onDetailClick) } } }
                 Button(onClick = onClose, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Black), shape = RoundedCornerShape(12.dp)) { Text("Close") }
             }
         }
@@ -355,7 +442,13 @@ fun ProviderTopRatedPopup(providers: List<Provider>, isLoading: Boolean, onClose
 }
 
 @Composable
-fun ProviderGridCard(provider: Provider, onDetailClick: (Provider) -> Unit, modifier: Modifier = Modifier) {
+fun ProviderGridCard(
+    provider: Provider,
+    userLat: Double?,
+    userLng: Double?,
+    onDetailClick: (Provider) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -394,6 +487,23 @@ fun ProviderGridCard(provider: Provider, onDetailClick: (Provider) -> Unit, modi
         Spacer(modifier = Modifier.height(8.dp))
         Text(text = provider.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
         Text(text = provider.serviceType, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, maxLines = 1)
+        
+        if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+            val distance = com.example.lbo_marketplace.utils.calculateDistance(
+                userLat,
+                userLng,
+                provider.latitude,
+                provider.longitude
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "📍 ${com.example.lbo_marketplace.utils.formatDistance(distance)} away",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                maxLines = 1
+            )
+        }
+        
         Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = { onDetailClick(provider) }, 
@@ -402,13 +512,18 @@ fun ProviderGridCard(provider: Provider, onDetailClick: (Provider) -> Unit, modi
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp), 
             colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
         ) { 
-            Text("View Profile", fontSize = 12.sp) 
+            Text("View Profile", fontSize = 12.sp, color = Color.White) 
         }
     }
 }
 
 @Composable
-fun ProviderDetailPopup(provider: Provider, onClose: () -> Unit) {
+fun ProviderDetailPopup(
+    provider: Provider,
+    userLat: Double?,
+    userLng: Double?,
+    onClose: () -> Unit
+) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -459,6 +574,23 @@ fun ProviderDetailPopup(provider: Provider, onClose: () -> Unit) {
                     Icon(Icons.Default.Star, contentDescription = "Rating", tint = Color(0xFFFFC107), modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("${provider.rating} / 5.0", fontWeight = FontWeight.Bold, color = Color.Black)
+                }
+
+                if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+                    val dist = com.example.lbo_marketplace.utils.calculateDistance(
+                        userLat,
+                        userLng,
+                        provider.latitude,
+                        provider.longitude
+                    )
+                    val formatted = com.example.lbo_marketplace.utils.formatDistance(dist)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "📍 $formatted away",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
                 }
                 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -534,23 +666,6 @@ fun ProviderHomeSearchBar(query: String, onQueryChange: (String) -> Unit) {
 fun ProviderEmptySearchState(query: String) { Column(modifier = Modifier.fillMaxWidth().padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("No results for '$query'", style = MaterialTheme.typography.bodyLarge, color = Color.Gray); Text("Try searching for 'Plumber' or 'Electrician'", style = MaterialTheme.typography.bodySmall, color = Color.LightGray) } }
 
 private fun checkNetworkAvailabilityLocal(context: Context): Boolean { val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager; val network = connectivityManager.activeNetwork ?: return false; val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false; return when { activeNetwork.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> true; activeNetwork.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> true; else -> false } }
-
-fun calculateDistanceLocal(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
-    val results = FloatArray(1)
-    android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
-    return results[0]
-}
-
-private fun getLocationLocal(context: Context, callback: (Double, Double) -> Unit) {
-    val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context)
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            if (location != null) {
-                callback(location.latitude, location.longitude)
-            }
-        }
-    }
-}
 
 fun Modifier.localShimmerEffect(): Modifier = composed {
     val transition = rememberInfiniteTransition(label = "shimmer")

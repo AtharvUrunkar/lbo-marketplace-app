@@ -13,7 +13,11 @@ class FirebaseAuthManager {
     suspend fun register(
         name: String,
         email: String,
-        password: String
+        password: String,
+        phoneNumber: String = "",
+        pincode: String = "",
+        latitude: Double = 0.0,
+        longitude: Double = 0.0
     ): Result<Pair<String, String>> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
@@ -24,7 +28,11 @@ class FirebaseAuthManager {
                 "name" to name,
                 "email" to email,
                 "role" to "USER",
-                "active" to true
+                "active" to true,
+                "phoneNumber" to phoneNumber,
+                "pincode" to pincode,
+                "latitude" to latitude,
+                "longitude" to longitude
             )
 
             db.collection("users").document(uid).set(userMap).await()
