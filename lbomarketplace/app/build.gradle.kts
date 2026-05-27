@@ -143,5 +143,6 @@ dependencies {
     // Media3 for MP4 support
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
+    implementation("com.onesignal:OneSignal:4.8.6")
 //>>>>>>> 14c3ab440ac402cd0aff62ae22f766f47d3ed65a
 }

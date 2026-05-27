@@ -75,5 +75,7 @@ data class UserProfile(
     // =====================================================
 
     val createdAt: Long =
-        System.currentTimeMillis()
+        System.currentTimeMillis(),
+
+    val oneSignalPlayerId: String = ""
 )
