@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -115,11 +116,18 @@ fun ProfileTab(
 
                     val oldUrl = profileImageUrl
                     val imageUrl = uploadResult.getOrNull() ?: ""
+                    val updateTime = System.currentTimeMillis()
                     user?.uid?.let { uid ->
-                        FirebaseFirestore.getInstance().collection("users").document(uid).update("profileImageUrl", imageUrl)
+                        FirebaseFirestore.getInstance().collection("users").document(uid).update(mapOf(
+                            "profileImageUrl" to imageUrl,
+                            "lastProfileUpdate" to updateTime
+                        ))
+                        FirebaseFirestore.getInstance().collection("provider_requests").document(uid)
+                            .update("lastProfileUpdate", updateTime)
+                            .addOnFailureListener { /* Ignore if this user is not a provider */ }
                     }
-
                     profileImageUrl = imageUrl
+                    lastProfileUpdate = updateTime
                     Toast.makeText(context, "Profile picture updated", Toast.LENGTH_SHORT).show()
 
                     // Automatically delete previous profile photo from Cloudinary storage to avoid orphan files
@@ -171,9 +179,15 @@ fun ProfileTab(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 1. Profile Image & Share Button
+            // 1. Profile Image with Share & Edit Pen overlay
             Box(contentAlignment = Alignment.TopEnd, modifier = Modifier.padding(horizontal = 24.dp)) {
-                Box(modifier = Modifier.size(140.dp).clip(CircleShape).background(Color(0xFFF8F8F8)), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(140.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF8F8F8)),
+                    contentAlignment = Alignment.Center
+                ) {
                     if (profileImageUrl.isNotEmpty()) {
                         Image(painter = rememberAsyncImagePainter(profileImageUrl), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else if (user?.photoUrl != null) {
@@ -183,6 +197,7 @@ fun ProfileTab(
                     }
                 }
                 
+                // Share FAB at Top-End
                 FloatingActionButton(
                     onClick = { if (!isSharing) shareProfileImage() },
                     modifier = Modifier.offset(x = 12.dp, y = (-12).dp).size(40.dp),
@@ -193,21 +208,37 @@ fun ProfileTab(
                     if (isSharing) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     else Icon(Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(20.dp))
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Upload Photo Button
-            Button(
-                onClick = { imagePickerLauncher.launch("image/*") },
-                enabled = !isUploading,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                if (isUploading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                } else {
-                    Text("Set Profile Picture", fontWeight = FontWeight.Bold)
+                // Edit Pen FAB at Bottom-End with 48 hours cooldown check
+                FloatingActionButton(
+                    onClick = {
+                        val cooldownMs = 48 * 60 * 60 * 1000L
+                        val now = System.currentTimeMillis()
+                        if (now - lastProfileUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                            val remainingHours = kotlin.math.ceil(remainingMs.toDouble() / (1000.0 * 60 * 60)).toInt()
+                            Toast.makeText(
+                                context,
+                                "Try after $remainingHours hours",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else if (!isUploading) {
+                            imagePickerLauncher.launch("image/*")
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 12.dp, y = 12.dp)
+                        .size(40.dp),
+                    containerColor = Color.Black,
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    if (isUploading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Profile Picture", modifier = Modifier.size(20.dp))
+                    }
                 }
             }
 
@@ -225,7 +256,21 @@ fun ProfileTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(text = "Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.Black)
-                    TextButton(onClick = { showEditDialog = true }) {
+                    TextButton(onClick = {
+                        val cooldownMs = 48 * 60 * 60 * 1000L
+                        val now = System.currentTimeMillis()
+                        if (now - lastProfileUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                            val remainingHours = kotlin.math.ceil(remainingMs.toDouble() / (1000.0 * 60 * 60)).toInt()
+                            Toast.makeText(
+                                context,
+                                "Try after $remainingHours hours",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@TextButton
+                        }
+                        showEditDialog = true
+                    }) {
                         Text("Edit", color = Color.Black, fontWeight = FontWeight.Bold)
                     }
                 }

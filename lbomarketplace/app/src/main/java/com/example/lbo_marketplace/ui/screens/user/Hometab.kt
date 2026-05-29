@@ -109,6 +109,10 @@ fun HomeTab(
         mutableStateOf("All")
     }
 
+    var selectedClusterForPopup by remember {
+        mutableStateOf<String?>(null)
+    }
+
     val scrollState = rememberScrollState()
 
     BackHandler(enabled = searchQuery.isNotEmpty()) {
@@ -384,87 +388,76 @@ fun HomeTab(
                             "Belgav"
                         )
 
-                    Row(
-
-                        modifier =
-                            Modifier.fillMaxWidth(),
-
-                        horizontalArrangement =
-                            Arrangement.spacedBy(8.dp)
-
+                    // 2x2 Grid Layout for Explore by Location
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-
-                        clustersList.forEach { clusterName ->
-
-                            val isSelected =
-                                selectedCluster == clusterName
-
-                            Card(
-
-                                modifier =
-                                    Modifier
+                        // Row 1: Sangli & Kolhapur
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            listOf("Sangli", "Kolhapur").forEach { clusterName ->
+                                Card(
+                                    modifier = Modifier
                                         .weight(1f)
+                                        .aspectRatio(1.2f)
                                         .clickable {
-                                            selectedCluster = clusterName
+                                            selectedClusterForPopup = clusterName
+                                            // Future feature: Navigation to new screen can be handled here
                                         },
-
-                                shape =
-                                    RoundedCornerShape(12.dp),
-
-                                colors =
-                                    CardDefaults.cardColors(
-
-                                        containerColor =
-                                            if (isSelected) {
-                                                Color.Black
-                                            } else {
-                                                Color(0xFFF3F3F3)
-                                            },
-
-                                        contentColor =
-                                            if (isSelected) {
-                                                Color.White
-                                            } else {
-                                                Color.Black
-                                            }
-                                    ),
-
-                                border =
-                                    if (isSelected) {
-                                        null
-                                    } else {
-                                        androidx.compose.foundation.BorderStroke(
-                                            1.dp,
-                                            Color(0xFFE0E0E0)
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color(0xFFE0E0E0),
+                                        contentColor = Color.Black
+                                    )
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = clusterName,
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
+                                }
+                            }
+                        }
 
-                            ) {
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                                Box(
-
-                                    modifier =
-                                        Modifier.padding(
-                                            vertical = 12.dp,
-                                            horizontal = 4.dp
-                                        ),
-
-                                    contentAlignment =
-                                        Alignment.Center
-
-                                ) {
-
-                                    Text(
-
-                                        text = clusterName,
-
-                                        fontSize = 11.sp,
-
-                                        fontWeight =
-                                            FontWeight.Bold,
-
-                                        maxLines = 1
+                        // Row 2: Belgav & Ichalkaranji
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            listOf("Belgav", "Ichalkaranji").forEach { clusterName ->
+                                Card(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1.2f)
+                                        .clickable {
+                                            selectedClusterForPopup = clusterName
+                                            // Future feature: Navigation to new screen can be handled here
+                                        },
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color(0xFFE0E0E0),
+                                        contentColor = Color.Black
                                     )
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = clusterName,
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -472,148 +465,7 @@ fun HomeTab(
 
                     Spacer(
                         modifier =
-                            Modifier.height(24.dp)
-                    )
-
-                    if (selectedCluster != "All") {
-
-                        Text(
-
-                            text =
-                                "📍 Service Providers in $selectedCluster",
-
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .titleMedium,
-
-                            fontWeight =
-                                FontWeight.Bold,
-
-                            color = Color.Black
-                        )
-
-                        Spacer(
-                            modifier =
-                                Modifier.height(12.dp)
-                        )
-
-                        if (clusterProviders.isEmpty()) {
-
-                            Card(
-
-                                modifier =
-                                    Modifier.fillMaxWidth(),
-
-                                colors =
-                                    CardDefaults.cardColors(
-
-                                        containerColor =
-                                            Color(0xFFFAF9F9)
-                                    ),
-
-                                shape =
-                                    RoundedCornerShape(12.dp)
-
-                            ) {
-
-                                Box(
-
-                                    modifier =
-                                        Modifier
-                                            .padding(24.dp)
-                                            .fillMaxWidth(),
-
-                                    contentAlignment =
-                                        Alignment.Center
-
-                                ) {
-
-                                    Text(
-                                        "No registered providers in $selectedCluster yet.",
-                                        color = Color.Gray
-                                    )
-                                }
-                            }
-
-                        } else {
-
-                            FlowRow(
-
-                                modifier =
-                                    Modifier.fillMaxWidth(),
-
-                                horizontalArrangement =
-                                    Arrangement.spacedBy(16.dp),
-
-                                verticalArrangement =
-                                    Arrangement.spacedBy(16.dp)
-
-                            ) {
-
-                                clusterProviders.forEach { provider ->
-
-                                    ProviderGridCard(
-
-                                        provider = provider,
-
-                                        onBookClick = onBookClick,
-
-                                        modifier =
-                                            Modifier.fillMaxWidth(
-                                                0.45f
-                                            ),
-
-                                        userLat = userLat,
-
-                                        userLng = userLng
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(
-                            modifier =
-                                Modifier.height(20.dp)
-                        )
-                    }
-
-                    Text(
-
-                        text = "👋 Welcome",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .headlineSmall,
-
-                        fontWeight =
-                            FontWeight.Bold,
-
-                        color = Color.Black
-                    )
-
-                    Spacer(
-                        modifier =
-                            Modifier.height(8.dp)
-                    )
-
-                    Text(
-
-                        text =
-                            "Find the best local service providers in your area.",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodyLarge,
-
-                        color = Color.Gray
-                    )
-
-                    Spacer(
-                        modifier =
-                            Modifier.height(40.dp)
+                            Modifier.height(10.dp)
                     )
                 }
 
@@ -690,10 +542,33 @@ fun HomeTab(
 
             isLoading = isLoading,
 
+            title = "Top Rated Providers",
+
             onClose = {
                 showTopRatedPopup = false
             },
 
+            onBookClick = onBookClick
+        )
+    }
+
+    if (selectedClusterForPopup != null) {
+        val clusterName = selectedClusterForPopup!!
+        val clusterProvidersList = remember(clusterName, providers) {
+            providers.filter { provider ->
+                provider.city.contains(clusterName, ignoreCase = true) ||
+                provider.area.contains(clusterName, ignoreCase = true) ||
+                provider.fullAddress.contains(clusterName, ignoreCase = true)
+            }.sortedByDescending { it.rating }
+        }
+
+        TopRatedPopup(
+            providers = clusterProvidersList,
+            isLoading = isLoading,
+            title = "Providers in $clusterName",
+            onClose = {
+                selectedClusterForPopup = null
+            },
             onBookClick = onBookClick
         )
     }
@@ -1021,6 +896,8 @@ fun TopRatedPopup(
 
     isLoading: Boolean,
 
+    title: String = "Top Rated Providers",
+
     onClose: () -> Unit,
 
     onBookClick: (String) -> Unit
@@ -1061,7 +938,7 @@ fun TopRatedPopup(
 
                     Text(
 
-                        "Top Rated Providers",
+                        title,
 
                         style =
                             MaterialTheme

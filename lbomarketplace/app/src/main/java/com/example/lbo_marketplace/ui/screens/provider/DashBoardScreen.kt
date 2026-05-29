@@ -99,6 +99,10 @@ fun DashboardScreen(
         mutableStateOf<Provider?>(null)
     }
 
+    var selectedClusterForPopup by remember {
+        mutableStateOf<String?>(null)
+    }
+
     val isOnline = remember {
         checkNetworkAvailabilityLocal(
             context
@@ -452,58 +456,103 @@ fun DashboardScreen(
 
                         Spacer(
                             modifier =
+                                Modifier.height(10.dp)
+                        )
+
+                        Spacer(
+                            modifier =
                                 Modifier.height(24.dp)
                         )
 
                         Text(
-                            text = "👋 Welcome",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
+                            text = "📍 Explore by Location",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
                         )
 
                         Spacer(
                             modifier =
-                                Modifier.height(8.dp)
+                                Modifier.height(12.dp)
                         )
 
-                        if (isLoading) {
-
-                            Column {
-
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth(0.7f)
-                                            .height(20.dp)
-                                            .localShimmerEffect()
-                                )
-
-                                Spacer(
-                                    modifier =
-                                        Modifier.height(8.dp)
-                                )
-
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth(0.9f)
-                                            .height(20.dp)
-                                            .localShimmerEffect()
-                                )
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            // Row 1: Sangli & Kolhapur
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                listOf("Sangli", "Kolhapur").forEach { clusterName ->
+                                    Card(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(1.2f)
+                                            .clickable {
+                                                selectedClusterForPopup = clusterName
+                                                // Future feature: Navigation to new screen can be handled here
+                                            },
+                                        shape = RoundedCornerShape(24.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFE0E0E0),
+                                            contentColor = Color.Black
+                                        )
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = clusterName,
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
                             }
 
-                        } else {
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                            Text(
-                                text = "Find the best local service providers in your area. Quick, reliable, and rated by users like you.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.Gray
-                            )
+                            // Row 2: Belgav & Ichalkaranji
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                listOf("Belgav", "Ichalkaranji").forEach { clusterName ->
+                                    Card(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(1.2f)
+                                            .clickable {
+                                                selectedClusterForPopup = clusterName
+                                                // Future feature: Navigation to new screen can be handled here
+                                            },
+                                        shape = RoundedCornerShape(24.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFE0E0E0),
+                                            contentColor = Color.Black
+                                        )
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = clusterName,
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         Spacer(
                             modifier =
-                                Modifier.height(40.dp)
+                                Modifier.height(20.dp)
                         )
                     }
 
@@ -603,6 +652,8 @@ fun DashboardScreen(
 
             userLng = userLng,
 
+            title = "Top Rated Providers",
+
             onClose = {
                 showTopRatedPopup = false
             },
@@ -610,6 +661,32 @@ fun DashboardScreen(
             onDetailClick = { provider ->
 
                 showTopRatedPopup = false
+                selectedDetailProvider = provider
+            }
+        )
+    }
+
+    if (selectedClusterForPopup != null) {
+        val clusterName = selectedClusterForPopup!!
+        val clusterProvidersList = remember(clusterName, providers) {
+            providers.filter { provider ->
+                provider.city.contains(clusterName, ignoreCase = true) ||
+                provider.area.contains(clusterName, ignoreCase = true) ||
+                provider.fullAddress.contains(clusterName, ignoreCase = true)
+            }.sortedByDescending { it.rating }
+        }
+
+        ProviderTopRatedPopup(
+            providers = clusterProvidersList,
+            isLoading = isLoading,
+            userLat = userLat,
+            userLng = userLng,
+            title = "Providers in $clusterName",
+            onClose = {
+                selectedClusterForPopup = null
+            },
+            onDetailClick = { provider ->
+                selectedClusterForPopup = null
                 selectedDetailProvider = provider
             }
         )
@@ -1040,6 +1117,7 @@ fun ProviderTopRatedPopup(
     isLoading: Boolean,
     userLat: Double?,
     userLng: Double?,
+    title: String = "Top Rated Providers",
     onClose: () -> Unit,
     onDetailClick: (Provider) -> Unit
 ) {
@@ -1069,7 +1147,7 @@ fun ProviderTopRatedPopup(
                 ) {
 
                     Text(
-                        text = "Top Rated Providers",
+                        text = title,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)

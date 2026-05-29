@@ -38,18 +38,27 @@ fun CommunityScreen(
     header: @Composable () -> Unit
 ) {
 
-    // Mock Notifications Data for Provider
-    var notifications by remember {
-
-        mutableStateOf(
-
-            listOf(
-                ProviderNotificationData("1", "Client A", "Booked a new service", "2h", true),
-                ProviderNotificationData("2", "LBO Team", "Your profile has been verified", "5h", true, thumbnail = R.drawable.logo),
-                ProviderNotificationData("3", "Client B", "Left a 5-star review", "1d", false, subText = "Amazing work, highly recommended!"),
-                ProviderNotificationData("4", "LBO System", "Weekly earnings report ready", "2d", false, thumbnail = R.drawable.logo)
-            )
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPrefs = remember { context.getSharedPreferences("lbo_notifications", android.content.Context.MODE_PRIVATE) }
+    
+    // Loaded list of deleted notifications from preferences
+    val deletedIds = remember {
+        mutableStateListOf<String>().apply {
+            addAll(sharedPrefs.getStringSet("deleted_provider_notifs", emptySet()) ?: emptySet())
+        }
+    }
+    
+    val initialList = remember {
+        listOf(
+            ProviderNotificationData("1", "Client A", "Booked a new service", "2h", true),
+            ProviderNotificationData("2", "LBO Team", "Your profile has been verified", "5h", true, thumbnail = R.drawable.logo),
+            ProviderNotificationData("3", "Client B", "Left a 5-star review", "1d", false, subText = "Amazing work, highly recommended!"),
+            ProviderNotificationData("4", "LBO System", "Weekly earnings report ready", "2d", false, thumbnail = R.drawable.logo)
         )
+    }
+
+    var notifications by remember(deletedIds.size) {
+        mutableStateOf(initialList.filter { it.id !in deletedIds })
     }
 
     Column(
@@ -108,10 +117,8 @@ fun CommunityScreen(
 
                     LaunchedEffect(item.id) {
 
-                        notifications =
-                            notifications.filter {
-                                it.id != item.id
-                            }
+                        deletedIds.add(item.id)
+                        sharedPrefs.edit().putStringSet("deleted_provider_notifs", deletedIds.toSet()).apply()
                     }
                 }
 

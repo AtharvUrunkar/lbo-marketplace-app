@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.foundation.clickable
+import coil.compose.AsyncImage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +64,22 @@ fun ProviderDashboard(
         mutableStateOf(false)
     }
 
+    val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+    var profileImageUrl by remember { mutableStateOf("") }
+
+    LaunchedEffect(user?.uid) {
+        user?.uid?.let { uid ->
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(uid)
+                .addSnapshotListener { snapshot, _ ->
+                    if (snapshot != null && snapshot.exists()) {
+                        profileImageUrl = snapshot.getString("profileImageUrl") ?: ""
+                    }
+                }
+        }
+    }
+
     @Composable
     fun GlobalHeader() {
 
@@ -82,10 +100,33 @@ fun ProviderDashboard(
 
         ) {
 
-            Spacer(
-                modifier =
-                    Modifier.width(48.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF0F0F0))
+                    .clickable { selectedTab = 3 },
+                contentAlignment = Alignment.Center
+            ) {
+                val finalUrl = profileImageUrl.ifBlank {
+                    user?.photoUrl?.toString() ?: ""
+                }
+                if (finalUrl.isNotEmpty()) {
+                    Image(
+                        painter = coil.compose.rememberAsyncImagePainter(finalUrl),
+                        contentDescription = "Profile Icon",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Profile Icon",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
 
             Box(
 

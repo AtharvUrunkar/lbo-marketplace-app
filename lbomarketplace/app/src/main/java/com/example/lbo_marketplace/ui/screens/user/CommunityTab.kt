@@ -36,19 +36,28 @@ fun CommunityTab(
     header: @Composable () -> Unit = {}
 ) {
 
-    // Mock Notifications Data
-    var notifications by remember {
-
-        mutableStateOf(
-
-            listOf(
-                NotificationData("1", "starryskies23", "Started following you", "1d", true),
-                NotificationData("2", "nebulanomad", "Liked your post", "1d", true, thumbnail = R.drawable.logo),
-                NotificationData("3", "emberecho", "Liked your comment", "2d", true, subText = "Happy birthday!!! 🥳🎉"),
-                NotificationData("4", "lunavoyager", "Started following you", "3d", true),
-                NotificationData("5", "shadowlynx", "Commented on your post", "4d", true, subText = "i'm going in september. what about you?", thumbnail = R.drawable.logo)
-            )
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPrefs = remember { context.getSharedPreferences("lbo_notifications", android.content.Context.MODE_PRIVATE) }
+    
+    // Loaded list of deleted notifications from preferences
+    val deletedIds = remember {
+        mutableStateListOf<String>().apply {
+            addAll(sharedPrefs.getStringSet("deleted_user_notifs", emptySet()) ?: emptySet())
+        }
+    }
+    
+    val initialList = remember {
+        listOf(
+            NotificationData("1", "starryskies23", "Started following you", "1d", true),
+            NotificationData("2", "nebulanomad", "Liked your post", "1d", true, thumbnail = R.drawable.logo),
+            NotificationData("3", "emberecho", "Liked your comment", "2d", true, subText = "Happy birthday!!! 🥳🎉"),
+            NotificationData("4", "lunavoyager", "Started following you", "3d", true),
+            NotificationData("5", "shadowlynx", "Commented on your post", "4d", true, subText = "i'm going in september. what about you?", thumbnail = R.drawable.logo)
         )
+    }
+
+    var notifications by remember(deletedIds.size) {
+        mutableStateOf(initialList.filter { it.id !in deletedIds })
     }
 
     Column(
@@ -108,10 +117,8 @@ fun CommunityTab(
 
                     LaunchedEffect(item.id) {
 
-                        notifications =
-                            notifications.filter {
-                                it.id != item.id
-                            }
+                        deletedIds.add(item.id)
+                        sharedPrefs.edit().putStringSet("deleted_user_notifs", deletedIds.toSet()).apply()
                     }
                 }
 

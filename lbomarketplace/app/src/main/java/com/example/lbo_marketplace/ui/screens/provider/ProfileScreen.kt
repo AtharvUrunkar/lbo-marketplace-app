@@ -79,8 +79,8 @@ fun ProviderProfileScreen(
     val currentProfile = providerViewModel.currentProviderProfile
     val name = currentProfile?.name?.ifBlank { null } ?: userName.ifBlank { null } ?: user?.displayName?.ifBlank { null } ?: "Provider"
     val email = user?.email ?: "N/A"
-    val serviceType = currentProfile?.serviceType ?: ""
-    val experience = currentProfile?.experience ?: ""
+    val serviceType = currentProfile?.serviceType?.ifBlank { null } ?: editServiceType.ifBlank { "N/A" }
+    val experience = currentProfile?.experience?.ifBlank { null } ?: editExperience.ifBlank { "N/A" }
 
     // Fetch profile image + provider details
     LaunchedEffect(user?.uid) {
@@ -96,17 +96,17 @@ fun ProviderProfileScreen(
     }
 
     // Populate edit fields when profile loads
-    LaunchedEffect(currentProfile) {
-        if (currentProfile != null && !isEditMode) {
-            editName        = currentProfile.name
-            editServiceType = currentProfile.serviceType
-            editDescription = currentProfile.description
-            editExperience  = currentProfile.experience
-            editLat         = currentProfile.latitude.toString()
-            editLng         = currentProfile.longitude.toString()
-            editCity        = currentProfile.city
-            editArea        = currentProfile.area
-            editFullAddress = currentProfile.fullAddress
+    LaunchedEffect(currentProfile, userName) {
+        if (!isEditMode) {
+            editName        = currentProfile?.name?.ifBlank { null } ?: userName.ifBlank { "" }
+            editServiceType = currentProfile?.serviceType ?: ""
+            editDescription = currentProfile?.description ?: ""
+            editExperience  = currentProfile?.experience ?: ""
+            editLat         = (currentProfile?.latitude ?: 0.0).toString()
+            editLng         = (currentProfile?.longitude ?: 0.0).toString()
+            editCity        = currentProfile?.city ?: ""
+            editArea        = currentProfile?.area ?: ""
+            editFullAddress = currentProfile?.fullAddress ?: ""
         }
     }
 
@@ -134,15 +134,23 @@ fun ProviderProfileScreen(
                     }
                     val oldUrl = profileImageUrl
                     val imageUrl = uploadResult.getOrNull() ?: ""
+                    val updateTime = System.currentTimeMillis()
                     user?.uid?.let { uid ->
                         FirebaseFirestore.getInstance()
                             .collection("users").document(uid)
-                            .update("profileImageUrl", imageUrl)
+                            .update(mapOf(
+                                "profileImageUrl" to imageUrl,
+                                "lastProfileUpdate" to updateTime
+                            ))
                         FirebaseFirestore.getInstance()
                             .collection("provider_requests").document(uid)
-                            .update("profileImageUrl", imageUrl)
+                            .update(mapOf(
+                                "profileImageUrl" to imageUrl,
+                                "lastProfileUpdate" to updateTime
+                            ))
                     }
                     profileImageUrl = imageUrl
+                    lastProfileUpdate = updateTime
                     Toast.makeText(context, "Profile picture updated", Toast.LENGTH_SHORT).show()
 
                     // Automatically delete previous profile photo from Cloudinary storage to avoid orphan files
@@ -201,7 +209,7 @@ fun ProviderProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ── Profile photo + share FAB ──
+            // ── Profile photo + share FAB + edit pen FAB ──
             Box(
                 contentAlignment = Alignment.TopEnd,
                 modifier = Modifier.padding(horizontal = 24.dp)
@@ -235,6 +243,7 @@ fun ProviderProfileScreen(
                     }
                 }
 
+                // Share FAB
                 FloatingActionButton(
                     onClick = { if (!isSharing) shareProfileImage() },
                     modifier = Modifier
@@ -257,24 +266,46 @@ fun ProviderProfileScreen(
                             modifier = Modifier.size(20.dp)
                         )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { imagePickerLauncher.launch("image/*") },
-                enabled = !isUploading,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                if (isUploading)
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                else
-                    Text("Set Profile Picture", fontWeight = FontWeight.Bold)
+                // Edit Pen FAB with 48 hours cooldown check
+                FloatingActionButton(
+                    onClick = {
+                        val cooldownMs = 48 * 60 * 60 * 1000L
+                        val now = System.currentTimeMillis()
+                        if (now - lastProfileUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                            val remainingHours = kotlin.math.ceil(remainingMs.toDouble() / (1000.0 * 60 * 60)).toInt()
+                            Toast.makeText(
+                                context,
+                                "Try after $remainingHours hours",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else if (!isUploading) {
+                            imagePickerLauncher.launch("image/*")
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 12.dp, y = 12.dp)
+                        .size(40.dp),
+                    containerColor = Color.Black,
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    if (isUploading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit Profile Picture",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -324,154 +355,175 @@ fun ProviderProfileScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // ── Provider Details Card (editable) ──
-            if (currentProfile != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F8F8)),
-                    elevation = CardDefaults.cardElevation(0.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Provider Details",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                            TextButton(
-                                onClick = {
-                                    if (isEditMode) {
-                                        // Cooldown Check: 48 Hours Limit
-                                        val cooldownMs = 48 * 60 * 60 * 1000L
-                                        val now = System.currentTimeMillis()
-                                        if (now - lastProfileUpdate < cooldownMs) {
-                                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
-                                            val hours = remainingMs / (1000 * 60 * 60)
-                                            val minutes = (remainingMs % (1000 * 60 * 60)) / (1000 * 60)
-                                            val tryAfterTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(
-                                                java.util.Date(lastProfileUpdate + cooldownMs)
-                                            )
-                                            Toast.makeText(
-                                                context,
-                                                "Try after $tryAfterTime ($hours hrs, $minutes mins remaining)",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                            return@TextButton
-                                        }
-
-                                        user?.uid?.let { uid ->
-                                            providerViewModel.updateProviderProfile(
-                                                userId = uid,
-                                                name = editName,
-                                                serviceType = editServiceType,
-                                                description = editDescription,
-                                                experience = editExperience,
-                                                latitude = editLat.toDoubleOrNull() ?: 0.0,
-                                                longitude = editLng.toDoubleOrNull() ?: 0.0,
-                                                city = editCity,
-                                                area = editArea,
-                                                fullAddress = editFullAddress
-                                            ) { success, msg ->
-                                                if (success) {
-                                                    val updateTime = System.currentTimeMillis()
-                                                    lastProfileUpdate = updateTime
-                                                    FirebaseFirestore.getInstance()
-                                                        .collection("users").document(uid)
-                                                        .update("lastProfileUpdate", updateTime)
-                                                    FirebaseFirestore.getInstance()
-                                                        .collection("provider_requests").document(uid)
-                                                        .update("lastProfileUpdate", updateTime)
-                                                    isEditMode = false
-                                                }
-                                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    } else {
-                                        isEditMode = true
+            // Always visible so that providers can edit their details immediately
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F8F8)),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Provider Details",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        TextButton(
+                            onClick = {
+                                if (isEditMode) {
+                                    isEditMode = false
+                                } else {
+                                    // Cooldown Check: 48 Hours Limit
+                                    val cooldownMs = 48 * 60 * 60 * 1000L
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastProfileUpdate < cooldownMs) {
+                                        val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                                        val remainingHours = kotlin.math.ceil(remainingMs.toDouble() / (1000.0 * 60 * 60)).toInt()
+                                        Toast.makeText(
+                                            context,
+                                            "Try after $remainingHours hours",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        return@TextButton
                                     }
-                                },
-                                colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
-                            ) {
-                                Text(if (isEditMode) "Save" else "Edit", fontWeight = FontWeight.Bold)
-                            }
+                                    isEditMode = true
+                                }
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
+                        ) {
+                            Text(if (isEditMode) "Cancel" else "Edit", fontWeight = FontWeight.Bold)
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                        if (isEditMode) {
-                            // Text fields for basic info
-                            listOf(
-                                Triple(editName,        "Name")         { v: String -> editName = v },
-                                Triple(editServiceType, "Service Type") { v: String -> editServiceType = v },
-                                Triple(editExperience,  "Experience")   { v: String -> editExperience = v },
-                                Triple(editDescription, "Description")  { v: String -> editDescription = v },
-                                Triple(editCity,        "City")         { v: String -> editCity = v },
-                                Triple(editArea,        "Area")         { v: String -> editArea = v },
-                                Triple(editFullAddress, "Full Address") { v: String -> editFullAddress = v }
-                            ).forEach { (value, label, onValueChange) ->
-                                OutlinedTextField(
-                                    value = value,
-                                    onValueChange = onValueChange,
-                                    label = { Text(label) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Color.Black,
-                                        unfocusedBorderColor = Color.LightGray,
-                                        focusedLabelColor = Color.Black
-                                    )
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                            // Lat / Lng row
-                            Row(
+                    if (isEditMode) {
+                        // Text fields for basic info
+                        listOf(
+                            Triple(editName,        "Name")                     { v: String -> editName = v },
+                            Triple(editServiceType, "Category / Service Type")  { v: String -> editServiceType = v },
+                            Triple(editExperience,  "Experience")               { v: String -> editExperience = v },
+                            Triple(editDescription, "Description")              { v: String -> editDescription = v },
+                            Triple(editCity,        "City")                     { v: String -> editCity = v },
+                            Triple(editArea,        "Area")                     { v: String -> editArea = v },
+                            Triple(editFullAddress, "Full Address")             { v: String -> editFullAddress = v }
+                        ).forEach { (value, label, onValueChange) ->
+                            OutlinedTextField(
+                                value = value,
+                                onValueChange = onValueChange,
+                                label = { Text(label) },
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = editLat,
-                                    onValueChange = { editLat = it },
-                                    label = { Text("Latitude") },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Color.Black,
-                                        unfocusedBorderColor = Color.LightGray
-                                    )
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Black,
+                                    unfocusedBorderColor = Color.LightGray,
+                                    focusedLabelColor = Color.Black
                                 )
-                                OutlinedTextField(
-                                    value = editLng,
-                                    onValueChange = { editLng = it },
-                                    label = { Text("Longitude") },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Color.Black,
-                                        unfocusedBorderColor = Color.LightGray
-                                    )
-                                )
-                            }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                         } else {
-                            ProviderDetailRow("Name",         currentProfile.name)
-                            ProviderDetailRow("Service Type", currentProfile.serviceType)
-                            ProviderDetailRow("Experience",   currentProfile.experience)
-                            ProviderDetailRow("Description",  currentProfile.description)
-                            ProviderDetailRow("City",         currentProfile.city)
-                            ProviderDetailRow("Area",         currentProfile.area)
-                            ProviderDetailRow("Full Address", currentProfile.fullAddress)
-                            ProviderDetailRow("Location",     "Lat: ${currentProfile.latitude}, Lng: ${currentProfile.longitude}")
+                            ProviderDetailRow("Name",                     name)
+                            ProviderDetailRow("Category / Service Type",  serviceType)
+                            ProviderDetailRow("Experience",               experience)
+                            ProviderDetailRow("Description",              editDescription)
+                            ProviderDetailRow("City",                     editCity)
+                            ProviderDetailRow("Area",                     editArea)
+                            ProviderDetailRow("Full Address",             editFullAddress)
                         }
                     }
                 }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (isEditMode) {
+                Button(
+                    onClick = {
+                        val cooldownMs = 48 * 60 * 60 * 1000L
+                        val now = System.currentTimeMillis()
+                        if (now - lastProfileUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                            val hours = remainingMs / (1000 * 60 * 60)
+                            val minutes = (remainingMs % (1000 * 60 * 60)) / (1000 * 60)
+                            val tryAfterTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(
+                                java.util.Date(lastProfileUpdate + cooldownMs)
+                            )
+                            Toast.makeText(
+                                context,
+                                "Try after $tryAfterTime ($hours hrs, $minutes mins remaining)",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@Button
+                        }
+
+                        user?.uid?.let { uid ->
+                            // Fetch dynamic location via GPS
+                            com.example.lbo_marketplace.utils.fetchProviderLocation(context) { lat, lng ->
+                                var resolvedLat = lat
+                                var resolvedLng = lng
+
+                                // Fallback: Geocode on the basis of City, Area, Full Address
+                                if (resolvedLat == 0.0 && resolvedLng == 0.0) {
+                                    val geocoded = geocodeAddress(context, editCity, editArea, editFullAddress)
+                                    resolvedLat = geocoded.first
+                                    resolvedLng = geocoded.second
+                                }
+
+                                providerViewModel.updateProviderProfile(
+                                    userId = uid,
+                                    name = editName,
+                                    serviceType = editServiceType,
+                                    description = editDescription,
+                                    experience = editExperience,
+                                    latitude = resolvedLat,
+                                    longitude = resolvedLng,
+                                    city = editCity,
+                                    area = editArea,
+                                    fullAddress = editFullAddress
+                                ) { success, msg ->
+                                    val updateTime = System.currentTimeMillis()
+                                    lastProfileUpdate = updateTime
+
+                                    // Catch permission updates defensively
+                                    try {
+                                        FirebaseFirestore.getInstance()
+                                            .collection("users").document(uid)
+                                            .update(mapOf(
+                                                "name" to editName,
+                                                "lastProfileUpdate" to updateTime
+                                            ))
+                                    } catch (e: Exception) {}
+
+                                    try {
+                                        FirebaseFirestore.getInstance()
+                                            .collection("provider_requests").document(uid)
+                                            .update("lastProfileUpdate", updateTime)
+                                    } catch (e: Exception) {}
+
+                                    isEditMode = false
+                                    Toast.makeText(context, "Profile details updated successfully", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+                ) {
+                    Text("Save Changes", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -492,6 +544,22 @@ fun ProviderProfileScreen(
 
             Spacer(modifier = Modifier.height(60.dp))
         }
+    }
+}
+
+fun geocodeAddress(context: android.content.Context, city: String, area: String, fullAddress: String): Pair<Double, Double> {
+    val addressQuery = listOf(fullAddress, area, city).filter { it.isNotBlank() }.joinToString(", ")
+    if (addressQuery.isBlank()) return Pair(0.0, 0.0)
+    return try {
+        val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
+        val addresses = geocoder.getFromLocationName(addressQuery, 1)
+        if (!addresses.isNullOrEmpty()) {
+            Pair(addresses[0].latitude, addresses[0].longitude)
+        } else {
+            Pair(0.0, 0.0)
+        }
+    } catch (e: Exception) {
+        Pair(0.0, 0.0)
     }
 }
 

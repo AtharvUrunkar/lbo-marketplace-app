@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import androidx.compose.foundation.clickable
 import android.net.Uri
 import android.os.Environment
 import android.view.View
@@ -64,6 +65,7 @@ fun UserMainScreen(
     val bookingViewModel: BookingViewModel = viewModel()
     val user = FirebaseAuth.getInstance().currentUser
     var customerName by remember { mutableStateOf("") }
+    var customerProfileImageUrl by remember { mutableStateOf("") }
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
 
@@ -103,12 +105,17 @@ fun UserMainScreen(
 
     LaunchedEffect(user?.uid) {
         user?.uid?.let { uid ->
-            com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("users").document(uid).get()
-                .addOnSuccessListener { doc ->
-                    customerName = doc.getString("name") ?: ""
+            com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("users").document(uid)
+                .addSnapshotListener { snapshot, _ ->
+                    if (snapshot != null && snapshot.exists()) {
+                        customerName = snapshot.getString("name") ?: ""
+                        customerProfileImageUrl = snapshot.getString("profileImageUrl") ?: ""
+                    }
                 }
         }
+    }
 
+    LaunchedEffect(user?.uid) {
         if (androidx.core.content.ContextCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.ACCESS_FINE_LOCATION
@@ -146,6 +153,8 @@ fun UserMainScreen(
     @Composable
     fun GlobalHeader() {
         Header(
+            profileImageUrl = customerProfileImageUrl,
+            onProfileClick = { selectedTab = 3 },
             onMenuClick = { menuExpanded = true },
             menuExpanded = menuExpanded,
             onDismissMenu = { menuExpanded = false },
@@ -252,9 +261,7 @@ fun UserMainScreen(
         containerColor = Color.White,
         contentColor = Color.Black,
         topBar = {
-            if (selectedTab == 0) {
-                GlobalHeader()
-            }
+            GlobalHeader()
         },
         bottomBar = {
             NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
@@ -294,9 +301,7 @@ fun UserMainScreen(
             ) { Icon(Icons.Default.Chat, contentDescription = "AI Chat Assistant") }
         }
     ) { padding ->
-        val contentPadding = if (selectedTab == 0) padding else PaddingValues(bottom = padding.calculateBottomPadding())
-
-        Box(modifier = Modifier.padding(contentPadding).background(Color.White)) {
+        Box(modifier = Modifier.padding(padding).background(Color.White)) {
             AnimatedContent(
                 targetState = selectedTab,
                 transitionSpec = { fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300)) },
@@ -307,9 +312,9 @@ fun UserMainScreen(
                         onBookClick = { viewingProviderId = it },
                         authViewModel = authViewModel
                     )
-                    1 -> CommunityTab(header = { GlobalHeader() })
-                    2 -> BookingTab(bookingViewModel = bookingViewModel, header = { GlobalHeader() })
-                    3 -> ProfileTab(authViewModel = authViewModel, onApplyClick = { showApplyScreen = true }, header = { GlobalHeader() })
+                    1 -> CommunityTab(header = {})
+                    2 -> BookingTab(bookingViewModel = bookingViewModel, header = {})
+                    3 -> ProfileTab(authViewModel = authViewModel, onApplyClick = { showApplyScreen = true }, header = {})
                 }
             }
         }
@@ -353,6 +358,8 @@ fun UserMainScreen(
 
 @Composable
 fun Header(
+    profileImageUrl: String = "",
+    onProfileClick: () -> Unit = {},
     onMenuClick: () -> Unit,
     menuExpanded: Boolean,
     onDismissMenu: () -> Unit,
@@ -368,7 +375,33 @@ fun Header(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Spacer(modifier = Modifier.width(48.dp))
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF0F0F0))
+                .clickable { onProfileClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            val finalUrl = profileImageUrl.ifBlank {
+                com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.photoUrl?.toString() ?: ""
+            }
+            if (finalUrl.isNotEmpty()) {
+                Image(
+                    painter = coil.compose.rememberAsyncImagePainter(finalUrl),
+                    contentDescription = "Profile Icon",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Profile Icon",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
         Box(
             modifier = Modifier.weight(1f).height(50.dp),
             contentAlignment = Alignment.Center
