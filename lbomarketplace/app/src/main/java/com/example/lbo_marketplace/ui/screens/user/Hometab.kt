@@ -105,6 +105,10 @@ fun HomeTab(
         mutableStateOf(false)
     }
 
+    var selectedCluster by remember {
+        mutableStateOf("All")
+    }
+
     val scrollState = rememberScrollState()
 
     BackHandler(enabled = searchQuery.isNotEmpty()) {
@@ -221,6 +225,18 @@ fun HomeTab(
                 provider.rating
             }
         )
+
+    val clusterProviders = remember(selectedCluster, providers) {
+        if (selectedCluster == "All") {
+            emptyList<Provider>()
+        } else {
+            providers.filter { provider ->
+                provider.city.contains(selectedCluster, ignoreCase = true) ||
+                provider.area.contains(selectedCluster, ignoreCase = true) ||
+                provider.fullAddress.contains(selectedCluster, ignoreCase = true)
+            }.sortedByDescending { it.rating }
+        }
+    }
 
     val bannerItems = remember {
 
@@ -340,7 +356,231 @@ fun HomeTab(
 
                     Text(
 
-                        "👋 Welcome",
+                        text =
+                            "📍 Explore by Location",
+
+                        style =
+                            MaterialTheme
+                                .typography
+                                .titleMedium,
+
+                        fontWeight =
+                            FontWeight.Bold,
+
+                        color = Color.Black
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+
+                    val clustersList =
+                        listOf(
+                            "All",
+                            "Sangli",
+                            "Ichalkaranji",
+                            "Kolhapur",
+                            "Belgav"
+                        )
+
+                    Row(
+
+                        modifier =
+                            Modifier.fillMaxWidth(),
+
+                        horizontalArrangement =
+                            Arrangement.spacedBy(8.dp)
+
+                    ) {
+
+                        clustersList.forEach { clusterName ->
+
+                            val isSelected =
+                                selectedCluster == clusterName
+
+                            Card(
+
+                                modifier =
+                                    Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            selectedCluster = clusterName
+                                        },
+
+                                shape =
+                                    RoundedCornerShape(12.dp),
+
+                                colors =
+                                    CardDefaults.cardColors(
+
+                                        containerColor =
+                                            if (isSelected) {
+                                                Color.Black
+                                            } else {
+                                                Color(0xFFF3F3F3)
+                                            },
+
+                                        contentColor =
+                                            if (isSelected) {
+                                                Color.White
+                                            } else {
+                                                Color.Black
+                                            }
+                                    ),
+
+                                border =
+                                    if (isSelected) {
+                                        null
+                                    } else {
+                                        androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            Color(0xFFE0E0E0)
+                                        )
+                                    }
+
+                            ) {
+
+                                Box(
+
+                                    modifier =
+                                        Modifier.padding(
+                                            vertical = 12.dp,
+                                            horizontal = 4.dp
+                                        ),
+
+                                    contentAlignment =
+                                        Alignment.Center
+
+                                ) {
+
+                                    Text(
+
+                                        text = clusterName,
+
+                                        fontSize = 11.sp,
+
+                                        fontWeight =
+                                            FontWeight.Bold,
+
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(24.dp)
+                    )
+
+                    if (selectedCluster != "All") {
+
+                        Text(
+
+                            text =
+                                "📍 Service Providers in $selectedCluster",
+
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .titleMedium,
+
+                            fontWeight =
+                                FontWeight.Bold,
+
+                            color = Color.Black
+                        )
+
+                        Spacer(
+                            modifier =
+                                Modifier.height(12.dp)
+                        )
+
+                        if (clusterProviders.isEmpty()) {
+
+                            Card(
+
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+
+                                colors =
+                                    CardDefaults.cardColors(
+
+                                        containerColor =
+                                            Color(0xFFFAF9F9)
+                                    ),
+
+                                shape =
+                                    RoundedCornerShape(12.dp)
+
+                            ) {
+
+                                Box(
+
+                                    modifier =
+                                        Modifier
+                                            .padding(24.dp)
+                                            .fillMaxWidth(),
+
+                                    contentAlignment =
+                                        Alignment.Center
+
+                                ) {
+
+                                    Text(
+                                        "No registered providers in $selectedCluster yet.",
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+
+                        } else {
+
+                            FlowRow(
+
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+
+                                horizontalArrangement =
+                                    Arrangement.spacedBy(16.dp),
+
+                                verticalArrangement =
+                                    Arrangement.spacedBy(16.dp)
+
+                            ) {
+
+                                clusterProviders.forEach { provider ->
+
+                                    ProviderGridCard(
+
+                                        provider = provider,
+
+                                        onBookClick = onBookClick,
+
+                                        modifier =
+                                            Modifier.fillMaxWidth(
+                                                0.45f
+                                            ),
+
+                                        userLat = userLat,
+
+                                        userLng = userLng
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(
+                            modifier =
+                                Modifier.height(20.dp)
+                        )
+                    }
+
+                    Text(
+
+                        text = "👋 Welcome",
 
                         style =
                             MaterialTheme
@@ -348,7 +588,9 @@ fun HomeTab(
                                 .headlineSmall,
 
                         fontWeight =
-                            FontWeight.Bold
+                            FontWeight.Bold,
+
+                        color = Color.Black
                     )
 
                     Spacer(
@@ -358,7 +600,8 @@ fun HomeTab(
 
                     Text(
 
-                        "Find the best local service providers in your area.",
+                        text =
+                            "Find the best local service providers in your area.",
 
                         style =
                             MaterialTheme

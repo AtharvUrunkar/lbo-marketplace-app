@@ -165,21 +165,35 @@ class CloudinaryRepository {
 // 🔥 PARSE JSON
 // =============================================
 
-                val json = JSONObject(responseData)
+                val json =
+                    JSONObject(responseData)
 
-                if (!json.has("secure_url")) {
-                    println("CLOUDINARY ERROR: $json")
+                if (
+                    !json.has("secure_url")
+                ) {
+
+                    println(
+                        "CLOUDINARY ERROR: $json"
+                    )
+
                     return@withContext Result.failure(
-                        Exception(json.toString())
+                        Exception(
+                            json.toString()
+                        )
                     )
                 }
 
-// ✅ Use secure_url EXACTLY as returned — no modifications
-                val uploadedUrl = json.getString("secure_url")
+                // ✅ Use secure_url EXACTLY as returned — no modifications
+                val uploadedUrl =
+                    json.getString("secure_url")
 
-                println("UPLOAD SUCCESS: $uploadedUrl")
+                println(
+                    "UPLOAD SUCCESS: $uploadedUrl"
+                )
 
-                Result.success(uploadedUrl)
+                Result.success(
+                    uploadedUrl
+                )
 
             } catch (e: Exception) {
 
@@ -282,5 +296,112 @@ class CloudinaryRepository {
         )
 
         return tempFile
+    }
+
+    // =========================================================
+    // 🔥 DELETE FILE FROM CLOUDINARY (CRASH-PROOF & ASYNC)
+    // =========================================================
+
+    suspend fun deleteFile(
+        url: String
+    ): Result<Boolean> {
+
+        return withContext(Dispatchers.IO) {
+
+            try {
+
+                if (
+                    url.isBlank() ||
+                    !url.contains("cloudinary.com")
+                ) {
+
+                    return@withContext Result.success(
+                        false
+                    )
+                }
+
+                // Parse public_id from the Cloudinary secure URL
+                val parts =
+                    url.split("/")
+
+                val uploadIndex =
+                    parts.indexOf("upload")
+
+                if (
+                    uploadIndex == -1 ||
+                    uploadIndex >= parts.lastIndex
+                ) {
+
+                    return@withContext Result.success(
+                        false
+                    )
+                }
+
+                val subList =
+                    parts.subList(
+                        uploadIndex + 1,
+                        parts.size
+                    )
+
+                val cleanParts =
+                    subList.filter {
+                        !it.startsWith("v") &&
+                                it.isNotEmpty()
+                    }
+
+                val fullName =
+                    cleanParts.joinToString("/")
+
+                val publicId =
+                    fullName.substringBeforeLast(".")
+
+                val deleteUrl =
+                    "https://api.cloudinary.com/v1_1/$cloudName/image/destroy"
+
+                val requestBody =
+                    MultipartBody.Builder()
+                        .setType(MultipartBody.FORM)
+
+                        .addFormDataPart(
+                            "public_id",
+                            publicId
+                        )
+
+                        .addFormDataPart(
+                            "upload_preset",
+                            uploadPreset
+                        )
+
+                        .build()
+
+                val request =
+                    Request.Builder()
+                        .url(deleteUrl)
+                        .post(requestBody)
+                        .build()
+
+                val response =
+                    client.newCall(request).execute()
+
+                val body =
+                    response.body?.string()
+
+                response.close()
+
+                println(
+                    "DELETE FILE SUCCESS: $publicId, response: $body"
+                )
+
+                Result.success(
+                    true
+                )
+
+            } catch (e: Exception) {
+
+                e.printStackTrace()
+
+                Result.failure(e)
+            }
+        }
     }
 }

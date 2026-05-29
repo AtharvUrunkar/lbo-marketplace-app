@@ -132,6 +132,7 @@ fun ProviderProfileScreen(
                         isUploading = false
                         return@launch
                     }
+                    val oldUrl = profileImageUrl
                     val imageUrl = uploadResult.getOrNull() ?: ""
                     user?.uid?.let { uid ->
                         FirebaseFirestore.getInstance()
@@ -143,6 +144,13 @@ fun ProviderProfileScreen(
                     }
                     profileImageUrl = imageUrl
                     Toast.makeText(context, "Profile picture updated", Toast.LENGTH_SHORT).show()
+
+                    // Automatically delete previous profile photo from Cloudinary storage to avoid orphan files
+                    if (oldUrl.isNotEmpty()) {
+                        scope.launch {
+                            cloudinaryRepo.deleteFile(oldUrl)
+                        }
+                    }
                 } catch (e: Exception) {
                     Toast.makeText(context, e.message ?: "Error", Toast.LENGTH_SHORT).show()
                 } finally {
@@ -340,8 +348,8 @@ fun ProviderProfileScreen(
                             TextButton(
                                 onClick = {
                                     if (isEditMode) {
-                                        // Cooldown Check
-                                        val cooldownMs = 72 * 60 * 60 * 1000L
+                                        // Cooldown Check: 48 Hours Limit
+                                        val cooldownMs = 48 * 60 * 60 * 1000L
                                         val now = System.currentTimeMillis()
                                         if (now - lastProfileUpdate < cooldownMs) {
                                             val remainingMs = cooldownMs - (now - lastProfileUpdate)

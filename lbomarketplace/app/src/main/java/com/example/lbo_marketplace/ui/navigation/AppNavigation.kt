@@ -117,44 +117,39 @@ fun AppNavigation(viewModel: AuthViewModel = viewModel()) {
  */
 @Composable
 fun LoadingScreen() {
-    var useFallback by remember { mutableStateOf(false) }
-
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (!useFallback) {
-            // Loop Video (MP4) - Circular container
-            Box(
-                modifier = Modifier
-                    .size(160.dp) // Industry standard for circular branding loaders
-                    .clip(CircleShape)
-            ) {
-                VideoLoader(
-                    videoResId = R.raw.logo, // raw/logo.mp4
-                    onError = { useFallback = true }
-                )
-            }
-        } else {
-            // Fallback Image (PNG) - Circular format to match branding
-            Image(
-                painter = painterResource(id = R.drawable.logo), // drawable/logo.png
-                contentDescription = "LBO Logo",
-                modifier = Modifier
-                    .size(160.dp) // Square size for circular clipping
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-        }
+        // Flat premium static branding logo format
+        Image(
+            painter = painterResource(id = R.drawable.logo), // drawable/logo.png
+            contentDescription = "LBO Logo",
+            modifier = Modifier
+                .size(140.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
 
         Spacer(modifier = Modifier.height(28.dp))
+
+        // Slim premium rotating circular indicator matching strict black-and-white theme
+        CircularProgressIndicator(
+            modifier = Modifier.size(28.dp),
+            color = Color.Black,
+            strokeWidth = 3.dp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Branding Text
         Text(
             text = "Loading LBO Marketplace...",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
+            color = Color.Black,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )

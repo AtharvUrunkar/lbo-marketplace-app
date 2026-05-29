@@ -40,7 +40,9 @@ class ProviderRepository {
 
         fullAddress: String,
 
-        verificationDocUrl: String
+        verificationDocUrl: String,
+
+        profileImageUrl: String? = null
 
     ): Result<String> {
 
@@ -71,6 +73,10 @@ class ProviderRepository {
                 "fullAddress" to fullAddress,
 
                 "verificationDocUrl" to verificationDocUrl,
+
+                "profileImageUrl" to profileImageUrl,
+
+                "profileImage" to profileImageUrl,
 
                 "status" to "PENDING",
 

@@ -219,8 +219,11 @@ fun UserMainScreen(
                 city: String,
                 area: String,
                 fullAddress: String,
-                verificationDocUri: Uri ->
+                verificationDocUri: Uri,
+                profilePhotoUri: Uri? ->
+
             user?.let {
+
                 providerViewModel.applyWithDetails(
                     context = context,
                     userId = it.uid,
@@ -234,10 +237,13 @@ fun UserMainScreen(
                     city = city,
                     area = area,
                     fullAddress = fullAddress,
-                    verificationDocUri = verificationDocUri
+                    verificationDocUri = verificationDocUri,
+                    profilePhotoUri = profilePhotoUri
                 )
             }
-            showApplyScreen = false
+
+            showApplyScreen =
+                false
         }
         return
     }
@@ -581,5 +587,4 @@ fun CustomDialog(
         containerColor =
             Color.White
     )
-}
-}
+}}

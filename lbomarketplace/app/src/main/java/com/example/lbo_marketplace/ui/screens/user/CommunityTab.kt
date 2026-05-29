@@ -1,6 +1,7 @@
 package com.example.lbo_marketplace.ui.screens.user
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,9 +35,12 @@ import com.example.lbo_marketplace.R
 fun CommunityTab(
     header: @Composable () -> Unit = {}
 ) {
+
     // Mock Notifications Data
     var notifications by remember {
+
         mutableStateOf(
+
             listOf(
                 NotificationData("1", "starryskies23", "Started following you", "1d", true),
                 NotificationData("2", "nebulanomad", "Liked your post", "1d", true, thumbnail = R.drawable.logo),
@@ -48,50 +52,116 @@ fun CommunityTab(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
+
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Color.White)
+
     ) {
+
         // ✅ MOVABLE HEADER
         header()
 
         Text(
+
             text = "Community",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+
+            style =
+                MaterialTheme
+                    .typography
+                    .headlineMedium,
+
+            fontWeight =
+                FontWeight.Bold,
+
+            modifier =
+                Modifier.padding(
+                    horizontal = 16.dp,
+                    vertical = 8.dp
+                )
         )
 
-        LazyColumn(modifier = Modifier.fillMaxSize().background(Color.White)) {
-            items(notifications, key = { it.id }) { item ->
-                val dismissState = rememberSwipeToDismissBoxState()
-                
-                if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+        LazyColumn(
+
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.White)
+
+        ) {
+
+            items(
+                items = notifications,
+                key = {
+                    it.id
+                }
+            ) { item ->
+
+                val dismissState =
+                    rememberSwipeToDismissBoxState()
+
+                if (
+                    dismissState.currentValue ==
+                    SwipeToDismissBoxValue.EndToStart
+                ) {
+
                     LaunchedEffect(item.id) {
-                        notifications = notifications.filter { it.id != item.id }
+
+                        notifications =
+                            notifications.filter {
+                                it.id != item.id
+                            }
                     }
                 }
 
                 SwipeToDismissBox(
+
                     state = dismissState,
-                    enableDismissFromStartToEnd = false,
+
+                    enableDismissFromStartToEnd =
+                        false,
+
                     backgroundContent = {
-                        val color = when (dismissState.dismissDirection) {
-                            SwipeToDismissBoxValue.EndToStart -> Color.Red
-                            else -> Color.Transparent
-                        }
+
+                        val color =
+                            when (dismissState.dismissDirection) {
+
+                                SwipeToDismissBoxValue.EndToStart ->
+                                    Color.Red
+
+                                else ->
+                                    Color.Transparent
+                            }
+
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(color)
-                                .padding(horizontal = 20.dp),
-                            contentAlignment = Alignment.CenterEnd
+
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(color)
+                                    .padding(
+                                        horizontal = 20.dp
+                                    ),
+
+                            contentAlignment =
+                                Alignment.CenterEnd
+
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color.White
+                            )
                         }
                     }
+
                 ) {
-                    NotificationItem(item)
+
+                    NotificationItem(
+                        data = item
+                    )
                 }
             }
         }
@@ -109,46 +179,187 @@ data class NotificationData(
 )
 
 @Composable
-fun NotificationItem(data: NotificationData) {
+fun NotificationItem(
+    data: NotificationData
+) {
+
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+
+        modifier =
+            Modifier.fillMaxWidth(),
+
         color = Color.White
+
     ) {
+
         Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+
+            modifier =
+                Modifier
+                    .padding(
+                        horizontal = 16.dp,
+                        vertical = 12.dp
+                    )
+                    .fillMaxWidth(),
+
+            verticalAlignment =
+                Alignment.CenterVertically
+
         ) {
+
             if (data.isUnread) {
-                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Color.Red))
+
+                Box(
+
+                    modifier =
+                        Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(Color.Red)
+                )
+
             } else {
-                Spacer(modifier = Modifier.width(6.dp))
+
+                Spacer(
+                    modifier =
+                        Modifier.width(6.dp)
+                )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(0xFFF8F8F8)), contentAlignment = Alignment.Center) {
-                Text(data.name.take(1).uppercase(), fontWeight = FontWeight.Bold)
+
+            Spacer(
+                modifier =
+                    Modifier.width(12.dp)
+            )
+
+            Box(
+
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Color(0xFFF8F8F8)
+                        ),
+
+                contentAlignment =
+                    Alignment.Center
+
+            ) {
+
+                Text(
+                    text =
+                        data.name.take(1).uppercase(),
+
+                    fontWeight =
+                        FontWeight.Bold
+                )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+
+            Spacer(
+                modifier =
+                    Modifier.width(12.dp)
+            )
+
+            Column(
+                modifier =
+                    Modifier.weight(1f)
+            ) {
+
                 Row {
-                    Text(text = data.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = data.time, color = Color.Gray, fontSize = 14.sp)
+
+                    Text(
+                        text = data.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.width(4.dp)
+                    )
+
+                    Text(
+                        text = data.time,
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
                 }
-                Text(text = data.action, color = Color.Gray, fontSize = 14.sp)
+
+                Text(
+                    text = data.action,
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+
                 if (data.subText != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(modifier = Modifier.padding(start = 8.dp)) {
-                        Box(modifier = Modifier.matchParentSize().background(Color.Transparent)) {
-                           Box(modifier = Modifier.fillMaxHeight().width(2.dp).background(Color(0xFFE0E0E0)))
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(4.dp)
+                    )
+
+                    Box(
+                        modifier =
+                            Modifier.padding(
+                                start = 8.dp
+                            )
+                    ) {
+
+                        Box(
+                            modifier =
+                                Modifier
+                                    .matchParentSize()
+                                    .background(
+                                        Color.Transparent
+                                    )
+                        ) {
+
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxHeight()
+                                        .width(2.dp)
+                                        .background(
+                                            Color(0xFFE0E0E0)
+                                        )
+                            )
                         }
-                        Text(text = data.subText, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp), color = Color.DarkGray)
+
+                        Text(
+                            text = data.subText,
+                            fontSize = 14.sp,
+
+                            modifier =
+                                Modifier.padding(
+                                    start = 8.dp
+                                ),
+
+                            color = Color.DarkGray
+                        )
                     }
                 }
             }
+
             if (data.thumbnail != null) {
-                androidx.compose.foundation.Image(painter = painterResource(id = data.thumbnail), contentDescription = null, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+
+                Image(
+                    painter =
+                        painterResource(
+                            id = data.thumbnail
+                        ),
+
+                    contentDescription = null,
+
+                    modifier =
+                        Modifier
+                            .size(40.dp)
+                            .clip(
+                                RoundedCornerShape(8.dp)
+                            ),
+
+                    contentScale =
+                        ContentScale.Crop
+                )
             }
         }
     }

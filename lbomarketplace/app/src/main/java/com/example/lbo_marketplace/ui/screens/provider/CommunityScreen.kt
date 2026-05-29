@@ -1,6 +1,7 @@
 package com.example.lbo_marketplace.ui.screens.provider
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,9 +37,12 @@ import com.example.lbo_marketplace.R
 fun CommunityScreen(
     header: @Composable () -> Unit
 ) {
+
     // Mock Notifications Data for Provider
     var notifications by remember {
+
         mutableStateOf(
+
             listOf(
                 ProviderNotificationData("1", "Client A", "Booked a new service", "2h", true),
                 ProviderNotificationData("2", "LBO Team", "Your profile has been verified", "5h", true, thumbnail = R.drawable.logo),
@@ -49,50 +53,115 @@ fun CommunityScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
+
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Color.White)
+
     ) {
+
         header()
 
         Text(
+
             text = "Community",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+
+            style =
+                MaterialTheme
+                    .typography
+                    .headlineMedium,
+
+            fontWeight =
+                FontWeight.Bold,
+
+            modifier =
+                Modifier.padding(
+                    horizontal = 16.dp,
+                    vertical = 8.dp
+                ),
+
             color = Color.Black
         )
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(notifications, key = { it.id }) { item ->
-                val dismissState = rememberSwipeToDismissBoxState()
-                
-                if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+        LazyColumn(
+
+            modifier =
+                Modifier.fillMaxSize()
+
+        ) {
+
+            items(
+                items = notifications,
+                key = {
+                    it.id
+                }
+            ) { item ->
+
+                val dismissState =
+                    rememberSwipeToDismissBoxState()
+
+                if (
+                    dismissState.currentValue ==
+                    SwipeToDismissBoxValue.EndToStart
+                ) {
+
                     LaunchedEffect(item.id) {
-                        notifications = notifications.filter { it.id != item.id }
+
+                        notifications =
+                            notifications.filter {
+                                it.id != item.id
+                            }
                     }
                 }
 
                 SwipeToDismissBox(
+
                     state = dismissState,
-                    enableDismissFromStartToEnd = false,
+
+                    enableDismissFromStartToEnd =
+                        false,
+
                     backgroundContent = {
-                        val color = when (dismissState.dismissDirection) {
-                            SwipeToDismissBoxValue.EndToStart -> Color.Red
-                            else -> Color.Transparent
-                        }
+
+                        val color =
+                            when (dismissState.dismissDirection) {
+
+                                SwipeToDismissBoxValue.EndToStart ->
+                                    Color.Red
+
+                                else ->
+                                    Color.Transparent
+                            }
+
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(color)
-                                .padding(horizontal = 20.dp),
-                            contentAlignment = Alignment.CenterEnd
+
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(color)
+                                    .padding(
+                                        horizontal = 20.dp
+                                    ),
+
+                            contentAlignment =
+                                Alignment.CenterEnd
+
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color.White
+                            )
                         }
                     }
+
                 ) {
-                    ProviderNotificationItem(item)
+
+                    ProviderNotificationItem(
+                        data = item
+                    )
                 }
             }
         }
@@ -110,63 +179,164 @@ data class ProviderNotificationData(
 )
 
 @Composable
-fun ProviderNotificationItem(data: ProviderNotificationData) {
+fun ProviderNotificationItem(
+    data: ProviderNotificationData
+) {
+
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+
+        modifier =
+            Modifier.fillMaxWidth(),
+
         color = Color.White
+
     ) {
+
         Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+
+            modifier =
+                Modifier
+                    .padding(
+                        horizontal = 16.dp,
+                        vertical = 12.dp
+                    )
+                    .fillMaxWidth(),
+
+            verticalAlignment =
+                Alignment.CenterVertically
+
         ) {
+
             // Unread indicator (Red dot)
             if (data.isUnread) {
+
                 Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(Color.Red)
+
+                    modifier =
+                        Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(Color.Red)
                 )
+
             } else {
-                Spacer(modifier = Modifier.width(6.dp))
+
+                Spacer(
+                    modifier =
+                        Modifier.width(6.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(
+                modifier =
+                    Modifier.width(12.dp)
+            )
 
             // Profile Avatar
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFF0F0F0)),
-                contentAlignment = Alignment.Center
+
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Color(0xFFF0F0F0)
+                        ),
+
+                contentAlignment =
+                    Alignment.Center
+
             ) {
-                Text(data.name.take(1).uppercase(), fontWeight = FontWeight.Bold)
+
+                Text(
+                    text =
+                        data.name.take(1).uppercase(),
+
+                    fontWeight =
+                        FontWeight.Bold
+                )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(
+                modifier =
+                    Modifier.width(12.dp)
+            )
 
             // Text Content
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier =
+                    Modifier.weight(1f)
+            ) {
+
                 Row {
-                    Text(text = data.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = data.time, color = Color.Gray, fontSize = 14.sp)
+
+                    Text(
+                        text = data.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.width(4.dp)
+                    )
+
+                    Text(
+                        text = data.time,
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
                 }
-                Text(text = data.action, color = Color.Gray, fontSize = 14.sp)
-                
+
+                Text(
+                    text = data.action,
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+
                 if (data.subText != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(modifier = Modifier.padding(start = 8.dp)) {
-                        Box(modifier = Modifier.matchParentSize().background(Color.Transparent)) {
-                           Box(modifier = Modifier.fillMaxHeight().width(2.dp).background(Color(0xFFE0E0E0)))
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(4.dp)
+                    )
+
+                    Box(
+                        modifier =
+                            Modifier.padding(
+                                start = 8.dp
+                            )
+                    ) {
+
+                        Box(
+                            modifier =
+                                Modifier
+                                    .matchParentSize()
+                                    .background(
+                                        Color.Transparent
+                                    )
+                        ) {
+
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxHeight()
+                                        .width(2.dp)
+                                        .background(
+                                            Color(0xFFE0E0E0)
+                                        )
+                            )
                         }
+
                         Text(
-                            text = data.subText, 
-                            fontSize = 14.sp, 
-                            modifier = Modifier.padding(start = 8.dp),
+                            text = data.subText,
+                            fontSize = 14.sp,
+
+                            modifier =
+                                Modifier.padding(
+                                    start = 8.dp
+                                ),
+
                             color = Color.DarkGray
                         )
                     }
@@ -175,13 +345,24 @@ fun ProviderNotificationItem(data: ProviderNotificationData) {
 
             // Thumbnail (Optional)
             if (data.thumbnail != null) {
-                androidx.compose.foundation.Image(
-                    painter = painterResource(id = data.thumbnail),
+
+                Image(
+                    painter =
+                        painterResource(
+                            id = data.thumbnail
+                        ),
+
                     contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
+
+                    modifier =
+                        Modifier
+                            .size(40.dp)
+                            .clip(
+                                RoundedCornerShape(8.dp)
+                            ),
+
+                    contentScale =
+                        ContentScale.Crop
                 )
             }
         }

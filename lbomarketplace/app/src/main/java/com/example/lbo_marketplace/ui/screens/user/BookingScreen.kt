@@ -68,12 +68,24 @@ fun BookingScreen(
                 }
             },
             colors = DatePickerDefaults.colors(
-                containerColor = Color.White
+                containerColor = Color.White,
+                titleContentColor = Color.Black,
+                headlineContentColor = Color.Black,
+                navigationContentColor = Color.Black
             )
         ) {
             DatePicker(
                 state = datePickerState,
                 colors = DatePickerDefaults.colors(
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black,
+                    headlineContentColor = Color.Black,
+                    weekdayContentColor = Color.DarkGray,
+                    navigationContentColor = Color.Black,
+                    yearContentColor = Color.Black,
+                    selectedYearContentColor = Color.White,
+                    selectedYearContainerColor = Color.Black,
+                    dayContentColor = Color.Black,
                     selectedDayContainerColor = Color.Black,
                     selectedDayContentColor = Color.White,
                     todayDateBorderColor = Color.Black,

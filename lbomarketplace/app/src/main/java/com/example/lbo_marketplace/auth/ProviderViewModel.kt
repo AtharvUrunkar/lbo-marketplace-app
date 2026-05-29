@@ -263,7 +263,9 @@ class ProviderViewModel : ViewModel() {
 
         fullAddress: String,
 
-        verificationDocUri: Uri
+        verificationDocUri: Uri,
+
+        profilePhotoUri: Uri?
     ) {
 
         viewModelScope.launch {
@@ -329,6 +331,49 @@ class ProviderViewModel : ViewModel() {
                         ?: ""
 
                 // =========================================
+                // 🔥 PROFILE PHOTO UPLOAD
+                // =========================================
+
+                var profileImageUrl: String? = null
+
+                if (profilePhotoUri != null) {
+
+                    applyState =
+                        "Uploading profile photo..."
+
+                    val profileFile =
+
+                        cloudinaryRepo.uriToFile(
+                            context,
+                            profilePhotoUri
+                        )
+
+                    val profileResult =
+
+                        cloudinaryRepo.uploadFile(
+                            profileFile
+                        )
+
+                    if (profileResult.isFailure) {
+
+                        applyState =
+
+                            profileResult
+                                .exceptionOrNull()
+                                ?.message
+
+                                ?: "Profile photo upload failed"
+
+                        return@launch
+                    }
+
+                    profileImageUrl =
+
+                        profileResult
+                            .getOrNull()
+                }
+
+                // =========================================
                 // 🔥 SAVE TO FIRESTORE
                 // =========================================
 
@@ -362,7 +407,9 @@ class ProviderViewModel : ViewModel() {
                         fullAddress = fullAddress,
 
                         verificationDocUrl =
-                            documentUrl
+                            documentUrl,
+
+                        profileImageUrl = profileImageUrl
                     )
 
                 applyState = if (result.isSuccess) {
