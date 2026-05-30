@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -62,7 +63,8 @@ fun ProviderProfileScreen(
     var isUploading by remember { mutableStateOf(false) }
     var isSharing by remember { mutableStateOf(false) }
     var userName by remember { mutableStateOf("") }
-    var lastProfileUpdate by remember { mutableStateOf(0L) }
+    var lastProfilePicUpdate by remember { mutableStateOf(0L) }
+    var lastInfoUpdate by remember { mutableStateOf(0L) }
 
     // Edit mode
     var isEditMode by remember { mutableStateOf(false) }
@@ -89,7 +91,9 @@ fun ProviderProfileScreen(
                 .addOnSuccessListener { doc ->
                     profileImageUrl = doc.getString("profileImageUrl") ?: ""
                     userName = doc.getString("name") ?: ""
-                    lastProfileUpdate = doc.getLong("lastProfileUpdate") ?: 0L
+                    val fallbackTime = doc.getLong("lastProfileUpdate") ?: 0L
+                    lastProfilePicUpdate = doc.getLong("lastProfilePicUpdate") ?: fallbackTime
+                    lastInfoUpdate = doc.getLong("lastInfoUpdate") ?: fallbackTime
                 }
             providerViewModel.fetchProviderProfile(uid)
         }
@@ -140,17 +144,17 @@ fun ProviderProfileScreen(
                             .collection("users").document(uid)
                             .update(mapOf(
                                 "profileImageUrl" to imageUrl,
-                                "lastProfileUpdate" to updateTime
+                                "lastProfilePicUpdate" to updateTime
                             ))
                         FirebaseFirestore.getInstance()
                             .collection("provider_requests").document(uid)
                             .update(mapOf(
                                 "profileImageUrl" to imageUrl,
-                                "lastProfileUpdate" to updateTime
+                                "lastProfilePicUpdate" to updateTime
                             ))
                     }
                     profileImageUrl = imageUrl
-                    lastProfileUpdate = updateTime
+                    lastProfilePicUpdate = updateTime
                     Toast.makeText(context, "Profile picture updated", Toast.LENGTH_SHORT).show()
 
                     // Automatically delete previous profile photo from Cloudinary storage to avoid orphan files
@@ -272,8 +276,8 @@ fun ProviderProfileScreen(
                     onClick = {
                         val cooldownMs = 48 * 60 * 60 * 1000L
                         val now = System.currentTimeMillis()
-                        if (now - lastProfileUpdate < cooldownMs) {
-                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                        if (now - lastProfilePicUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastProfilePicUpdate)
                             val remainingHours = kotlin.math.ceil(remainingMs.toDouble() / (1000.0 * 60 * 60)).toInt()
                             Toast.makeText(
                                 context,
@@ -384,8 +388,8 @@ fun ProviderProfileScreen(
                                     // Cooldown Check: 48 Hours Limit
                                     val cooldownMs = 48 * 60 * 60 * 1000L
                                     val now = System.currentTimeMillis()
-                                    if (now - lastProfileUpdate < cooldownMs) {
-                                        val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                                    if (now - lastInfoUpdate < cooldownMs) {
+                                        val remainingMs = cooldownMs - (now - lastInfoUpdate)
                                         val remainingHours = kotlin.math.ceil(remainingMs.toDouble() / (1000.0 * 60 * 60)).toInt()
                                         Toast.makeText(
                                             context,
@@ -394,6 +398,7 @@ fun ProviderProfileScreen(
                                         ).show()
                                         return@TextButton
                                     }
+                                    Toast.makeText(context, "Note: Edits locked for 48 hours once saved.", Toast.LENGTH_LONG).show()
                                     isEditMode = true
                                 }
                             },
@@ -406,10 +411,79 @@ fun ProviderProfileScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (isEditMode) {
+                        Text(
+                            text = "⚠️ Edits are locked for 48 hours after saving.",
+                            color = Color.Red,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
                         // Text fields for basic info
+                        OutlinedTextField(
+                            value = editName,
+                            onValueChange = { editName = it },
+                            label = { Text("Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Black,
+                                unfocusedBorderColor = Color.LightGray,
+                                focusedLabelColor = Color.Black
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Category / Service Type with Auto-Complete suggestions chips
+                        OutlinedTextField(
+                            value = editServiceType,
+                            onValueChange = { editServiceType = it },
+                            label = { Text("Category / Service Type") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Black,
+                                unfocusedBorderColor = Color.LightGray,
+                                focusedLabelColor = Color.Black
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        val serviceSuggestions = remember {
+                            listOf(
+                                "Doctor", "Electrician", "Plumber", "AC Repair", "Carpenter", 
+                                "Tuition Tutor", "Painter", "Banquet Hall", "Civil Lawyer", 
+                                "Pest Control", "General Physician", "Appliance Repair", "Maths Tutor"
+                            )
+                        }
+                        val filteredSuggestions = remember(editServiceType) {
+                            serviceSuggestions.filter { it.contains(editServiceType, ignoreCase = true) }
+                        }
+
+                        if (filteredSuggestions.isNotEmpty()) {
+                            androidx.compose.foundation.lazy.LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                            ) {
+                                items(filteredSuggestions) { suggestion ->
+                                    androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                                    SuggestionChip(
+                                        onClick = { editServiceType = suggestion },
+                                        label = { Text(suggestion) },
+                                        colors = SuggestionChipDefaults.suggestionChipColors(
+                                            containerColor = Color(0xFFF5F5F5),
+                                            labelColor = Color.Black
+                                        ),
+                                        border = SuggestionChipDefaults.suggestionChipBorder(
+                                            enabled = true,
+                                            borderColor = Color.LightGray
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         listOf(
-                            Triple(editName,        "Name")                     { v: String -> editName = v },
-                            Triple(editServiceType, "Category / Service Type")  { v: String -> editServiceType = v },
                             Triple(editExperience,  "Experience")               { v: String -> editExperience = v },
                             Triple(editDescription, "Description")              { v: String -> editDescription = v },
                             Triple(editCity,        "City")                     { v: String -> editCity = v },
@@ -449,12 +523,12 @@ fun ProviderProfileScreen(
                     onClick = {
                         val cooldownMs = 48 * 60 * 60 * 1000L
                         val now = System.currentTimeMillis()
-                        if (now - lastProfileUpdate < cooldownMs) {
-                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                        if (now - lastInfoUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastInfoUpdate)
                             val hours = remainingMs / (1000 * 60 * 60)
                             val minutes = (remainingMs % (1000 * 60 * 60)) / (1000 * 60)
                             val tryAfterTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(
-                                java.util.Date(lastProfileUpdate + cooldownMs)
+                                java.util.Date(lastInfoUpdate + cooldownMs)
                             )
                             Toast.makeText(
                                 context,
@@ -490,7 +564,7 @@ fun ProviderProfileScreen(
                                     fullAddress = editFullAddress
                                 ) { success, msg ->
                                     val updateTime = System.currentTimeMillis()
-                                    lastProfileUpdate = updateTime
+                                    lastInfoUpdate = updateTime
 
                                     // Catch permission updates defensively
                                     try {
@@ -498,14 +572,14 @@ fun ProviderProfileScreen(
                                             .collection("users").document(uid)
                                             .update(mapOf(
                                                 "name" to editName,
-                                                "lastProfileUpdate" to updateTime
+                                                "lastInfoUpdate" to updateTime
                                             ))
                                     } catch (e: Exception) {}
 
                                     try {
                                         FirebaseFirestore.getInstance()
                                             .collection("provider_requests").document(uid)
-                                            .update("lastProfileUpdate", updateTime)
+                                            .update("lastInfoUpdate", updateTime)
                                     } catch (e: Exception) {}
 
                                     isEditMode = false

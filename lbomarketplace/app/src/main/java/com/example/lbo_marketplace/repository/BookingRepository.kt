@@ -242,6 +242,25 @@ class BookingRepository {
         feedback: String
     ): Result<String> {
         return try {
+            val bookingDoc = db.collection("bookings").document(bookingId).get().await()
+            if (!bookingDoc.exists()) {
+                return Result.failure(Exception("Booking does not exist"))
+            }
+
+            val customerId = bookingDoc.getString("customerId") ?: ""
+            val resolvedProviderId = bookingDoc.getString("providerId") ?: providerId
+            val resolvedProviderUid = bookingDoc.getString("providerUid") ?: ""
+
+            // 🚫 Rule 1: A user/provider cannot rate themselves
+            if (customerId == resolvedProviderId || customerId == resolvedProviderUid) {
+                return Result.failure(Exception("You cannot rate yourself!"))
+            }
+
+            // 🚫 Rule 2: Single review check. If rating is already present, block it!
+            if (bookingDoc.contains("rating") && bookingDoc.get("rating") != null) {
+                return Result.failure(Exception("You have already reviewed this booking!"))
+            }
+
             // Update booking document
             db.collection("bookings").document(bookingId).update(
                 mapOf(

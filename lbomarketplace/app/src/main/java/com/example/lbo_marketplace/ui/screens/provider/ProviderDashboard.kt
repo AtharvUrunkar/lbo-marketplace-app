@@ -65,7 +65,22 @@ fun ProviderDashboard(
     }
 
     val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+    val context = androidx.compose.ui.platform.LocalContext.current
     var profileImageUrl by remember { mutableStateOf("") }
+    var hasCheckedProfileImageOnboarding by remember { mutableStateOf(false) }
+    var showProfileImageOnboardingDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(profileImageUrl, user?.uid) {
+        user?.uid?.let { uid ->
+            val prefs = context.getSharedPreferences("lbo_prefs", android.content.Context.MODE_PRIVATE)
+            val isNewlyRegistered = prefs.getBoolean("newly_registered_$uid", false)
+            if (!hasCheckedProfileImageOnboarding && profileImageUrl == "" && isNewlyRegistered) {
+                showProfileImageOnboardingDialog = true
+                hasCheckedProfileImageOnboarding = true
+                prefs.edit().putBoolean("newly_registered_$uid", false).apply()
+            }
+        }
+    }
 
     LaunchedEffect(user?.uid) {
         user?.uid?.let { uid ->
@@ -635,6 +650,46 @@ fun ProviderDashboard(
                 RoundedCornerShape(24.dp),
 
             containerColor = Color.White
+        )
+    }
+
+    if (showProfileImageOnboardingDialog) {
+        AlertDialog(
+            onDismissRequest = { showProfileImageOnboardingDialog = false },
+            title = {
+                Text(
+                    text = "Welcome to LBO!",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+            },
+            text = {
+                Text(
+                    text = "Let's personalize your account! Take a moment to setup your profile and upload a clean profile picture.",
+                    color = Color.DarkGray
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showProfileImageOnboardingDialog = false
+                        selectedTab = 3 // Redirects straight to the Profile Tab!
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+                ) {
+                    Text("Setup Now", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showProfileImageOnboardingDialog = false }
+                ) {
+                    Text("Later", color = Color.Black, fontWeight = FontWeight.Medium)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
         )
     }
 }

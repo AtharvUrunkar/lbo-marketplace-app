@@ -37,16 +37,21 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -102,6 +107,10 @@ fun HomeTab(
     }
 
     var showTopRatedPopup by remember {
+        mutableStateOf(false)
+    }
+
+    var showCategoryPopup by remember {
         mutableStateOf(false)
     }
 
@@ -268,7 +277,8 @@ fun HomeTab(
             query = searchQuery,
             onQueryChange = {
                 searchQuery = it
-            }
+            },
+            providers = providers
         )
 
         AnimatedContent(
@@ -319,64 +329,54 @@ fun HomeTab(
                             Modifier.height(24.dp)
                     )
 
-                    Button(
-
-                        onClick = {
-                            showTopRatedPopup = true
-                        },
-
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(60.dp),
-
-                        shape =
-                            RoundedCornerShape(16.dp),
-
-                        colors =
-                            ButtonDefaults.buttonColors(
-
-                                containerColor =
-                                    Color(0xFFD9D9D9),
-
-                                contentColor =
-                                    Color.Black
-                            )
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        Button(
+                            onClick = {
+                                showTopRatedPopup = true
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFD9D9D9),
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Text(
+                                text = "TOP RATED",
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
 
-                        Text(
-
-                            text =
-                                "TOP RATED OF THIS WEEK",
-
-                            fontWeight =
-                                FontWeight.ExtraBold
-                        )
+                        Button(
+                            onClick = {
+                                showCategoryPopup = true
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFD9D9D9),
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Text(
+                                text = "CATEGORIES",
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
                     }
 
                     Spacer(
                         modifier =
                             Modifier.height(24.dp)
-                    )
-
-                    Text(
-
-                        text =
-                            "📍 Explore by Location",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .titleMedium,
-
-                        fontWeight =
-                            FontWeight.Bold,
-
-                        color = Color.Black
-                    )
-
-                    Spacer(
-                        modifier =
-                            Modifier.height(10.dp)
                     )
 
                     val clustersList =
@@ -548,7 +548,11 @@ fun HomeTab(
                 showTopRatedPopup = false
             },
 
-            onBookClick = onBookClick
+            onBookClick = onBookClick,
+
+            userLat = userLat,
+
+            userLng = userLng
         )
     }
 
@@ -556,9 +560,16 @@ fun HomeTab(
         val clusterName = selectedClusterForPopup!!
         val clusterProvidersList = remember(clusterName, providers) {
             providers.filter { provider ->
-                provider.city.contains(clusterName, ignoreCase = true) ||
-                provider.area.contains(clusterName, ignoreCase = true) ||
-                provider.fullAddress.contains(clusterName, ignoreCase = true)
+                val searchTerms = when (clusterName.lowercase()) {
+                    "belgav", "belgaum" -> listOf("belgav", "belgaum")
+                    "ichalkaranji", "shilkaranji", "ichalkarnji" -> listOf("ichalkaranji", "shilkaranji", "ichalkarnji")
+                    else -> listOf(clusterName.lowercase())
+                }
+                searchTerms.any { term ->
+                    provider.city.contains(term, ignoreCase = true) ||
+                    provider.area.contains(term, ignoreCase = true) ||
+                    provider.fullAddress.contains(term, ignoreCase = true)
+                }
             }.sortedByDescending { it.rating }
         }
 
@@ -569,7 +580,22 @@ fun HomeTab(
             onClose = {
                 selectedClusterForPopup = null
             },
-            onBookClick = onBookClick
+            onBookClick = onBookClick,
+            userLat = userLat,
+            userLng = userLng
+        )
+    }
+
+    if (showCategoryPopup) {
+        CategoryPopup(
+            providers = providers,
+            isLoading = isLoading,
+            onClose = {
+                showCategoryPopup = false
+            },
+            onBookClick = onBookClick,
+            userLat = userLat,
+            userLng = userLng
         )
     }
 }
@@ -582,6 +608,23 @@ fun ProviderGridCard(
     userLat: Double? = null,
     userLng: Double? = null
 ) {
+    var dynamicProfileImageUrl by remember(provider.id) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(provider.id) {
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(provider.id)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (doc != null && doc.exists()) {
+                    val url = doc.getString("profileImageUrl")
+                    if (!url.isNullOrBlank()) {
+                        dynamicProfileImageUrl = url
+                    }
+                }
+            }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -596,10 +639,10 @@ fun ProviderGridCard(
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFFF8F8F8))
         ) {
-            val imageUrl = provider.profileImage ?: provider.profileImageUrl
+            val imageUrl = dynamicProfileImageUrl ?: provider.profileImage ?: provider.profileImageUrl
             if (!imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = imageUrl,
+                Image(
+                    painter = coil.compose.rememberAsyncImagePainter(imageUrl),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -687,52 +730,130 @@ fun ProviderGridCard(
 @Composable
 fun HomeSearchBar(
     query: String,
-    onQueryChange: (String) -> Unit
+    onQueryChange: (String) -> Unit,
+    providers: List<Provider> = emptyList()
 ) {
+    var isFocused by remember { mutableStateOf(false) }
 
-    OutlinedTextField(
+    val suggestions = remember(query, providers) {
+        if (query.isBlank()) {
+            emptyList()
+        } else {
+            val list = mutableListOf<String>()
+            
+            // 1. Match categories / serviceTypes
+            providers.map { it.serviceType.trim() }
+                .distinctBy { it.lowercase() }
+                .filter { it.contains(query, ignoreCase = true) }
+                .forEach { list.add(it) }
 
-        value = query,
+            // 2. Match provider names
+            providers.map { it.name.trim() }
+                .distinctBy { it.lowercase() }
+                .filter { it.contains(query, ignoreCase = true) }
+                .forEach { list.add(it) }
 
-        onValueChange = onQueryChange,
+            // 3. Smart phrase queries (e.g. "Top Rated <Service>")
+            providers.map { it.serviceType.trim() }
+                .distinctBy { it.lowercase() }
+                .filter { it.contains(query, ignoreCase = true) }
+                .forEach {
+                    list.add("Top Rated $it")
+                }
 
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 16.dp),
+            list.distinct().take(5)
+        }
+    }
 
-        placeholder = {
-            Text("Search providers...")
-        },
-
-        leadingIcon = {
-            Icon(
-                Icons.Default.Search,
-                null
-            )
-        },
-
-        trailingIcon = {
-
-            if (query.isNotEmpty()) {
-
-                IconButton(
-                    onClick = {
-                        onQueryChange("")
-                    }
-                ) {
-
+    Box(modifier = Modifier.fillMaxWidth().zIndex(10f)) {
+        Column {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { isFocused = it.isFocused },
+                placeholder = {
+                    Text("Search providers...")
+                },
+                leadingIcon = {
                     Icon(
-                        Icons.Default.Close,
+                        Icons.Default.Search,
                         null
                     )
+                },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                onQueryChange("")
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                null
+                            )
+                        }
+                    }
+                },
+                shape = CircleShape,
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Black,
+                    unfocusedBorderColor = Color.LightGray,
+                    focusedLabelColor = Color.Black
+                )
+            )
+
+            // Dynamic suggestions dropdown list overlay
+            if (isFocused && suggestions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(8.dp, RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0))
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        suggestions.forEach { suggestion ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val cleanQuery = if (suggestion.startsWith("Top Rated ")) {
+                                            suggestion.removePrefix("Top Rated ")
+                                        } else {
+                                            suggestion
+                                        }
+                                        onQueryChange(cleanQuery)
+                                        isFocused = false
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = suggestion,
+                                    color = Color.Black,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
                 }
             }
-        },
-
-        shape = CircleShape,
-
-        singleLine = true
-    )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
 }
 
 @Composable
@@ -820,6 +941,68 @@ fun InitialsAvatar(
     }
 }
 
+@OptIn(UnstableApi::class)
+@Composable
+fun BannerVideoPlayer(
+    videoResId: Int,
+    onVideoCompleted: () -> Unit
+) {
+    val context = LocalContext.current
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri("android.resource://${context.packageName}/$videoResId")
+            setMediaItem(mediaItem)
+            repeatMode = Player.REPEAT_MODE_OFF
+            playWhenReady = true
+            volume = 1f // Enable video audio so user can hear banner music/sound
+            prepare()
+
+            addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_ENDED) {
+                        onVideoCompleted()
+                    }
+                }
+            })
+        }
+    }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
+                    exoPlayer.pause()
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
+                    exoPlayer.play()
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            exoPlayer.release()
+        }
+    }
+
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = false // Hide controls for banner
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
 @Composable
 fun BannerSlider(
     items: List<BannerItem>
@@ -835,18 +1018,20 @@ fun BannerSlider(
     val coroutineScope =
         rememberCoroutineScope()
 
+    val currentItem = items[pagerState.currentPage]
     LaunchedEffect(
         pagerState.currentPage
     ) {
-
-        delay(3000)
-
-        coroutineScope.launch {
-
-            pagerState.animateScrollToPage(
-                (pagerState.currentPage + 1)
-                        % items.size
-            )
+        // If it is a video, do not auto-scroll by time.
+        // It will scroll dynamically when the video finishes playing.
+        if (!currentItem.isVideo) {
+            delay(4000)
+            coroutineScope.launch {
+                pagerState.animateScrollToPage(
+                    (pagerState.currentPage + 1)
+                            % items.size
+                )
+            }
         }
     }
 
@@ -869,22 +1054,35 @@ fun BannerSlider(
                     RoundedCornerShape(20.dp)
                 )
         ) {
+            if (item.isVideo && item.localVideoRes != null) {
+                BannerVideoPlayer(
+                    videoResId = item.localVideoRes,
+                    onVideoCompleted = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(
+                                (pagerState.currentPage + 1)
+                                        % items.size
+                            )
+                        }
+                    }
+                )
+            } else {
+                Image(
 
-            Image(
+                    painter = painterResource(
+                        id = item.localImageRes
+                            ?: R.drawable.logo
+                    ),
 
-                painter = painterResource(
-                    id = item.localImageRes
-                        ?: R.drawable.logo
-                ),
+                    contentDescription = null,
 
-                contentDescription = null,
+                    modifier =
+                        Modifier.fillMaxSize(),
 
-                modifier =
-                    Modifier.fillMaxSize(),
-
-                contentScale =
-                    ContentScale.Crop
-            )
+                    contentScale =
+                        ContentScale.Crop
+                )
+            }
         }
     }
 }
@@ -900,7 +1098,11 @@ fun TopRatedPopup(
 
     onClose: () -> Unit,
 
-    onBookClick: (String) -> Unit
+    onBookClick: (String) -> Unit,
+
+    userLat: Double? = null,
+
+    userLng: Double? = null
 ) {
 
     Dialog(
@@ -1004,8 +1206,168 @@ fun TopRatedPopup(
                                 provider = provider,
 
                                 onBookClick =
-                                    onBookClick
+                                    onBookClick,
+
+                                userLat = userLat,
+
+                                userLng = userLng
                             )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryPopup(
+    providers: List<Provider>,
+    isLoading: Boolean,
+    onClose: () -> Unit,
+    onBookClick: (String) -> Unit,
+    userLat: Double? = null,
+    userLng: Double? = null
+) {
+    var selectedCategory by remember { mutableStateOf("") }
+    val categories = remember(providers) {
+        providers.map { it.serviceType.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase() }
+            .sorted()
+    }
+
+    val categoryProviders = remember(selectedCategory, providers, userLat, userLng) {
+        if (selectedCategory.isBlank()) {
+            emptyList()
+        } else {
+            providers.filter { it.serviceType.trim().equals(selectedCategory.trim(), ignoreCase = true) }
+                .sortedWith(
+                    compareBy<Provider> { provider ->
+                        if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+                            val distance = calculateDistance(userLat, userLng, provider.latitude, provider.longitude)
+                            if (distance <= 18000) 0 else 1
+                        } else {
+                            1
+                        }
+                    }.thenBy { provider ->
+                        if (userLat != null && userLng != null && userLat != 0.0 && userLng != 0.0 && provider.latitude != 0.0 && provider.longitude != 0.0) {
+                            calculateDistance(userLat, userLng, provider.latitude, provider.longitude)
+                        } else {
+                            Float.MAX_VALUE
+                        }
+                    }.thenByDescending { provider ->
+                        provider.rating
+                    }.thenBy { provider ->
+                        provider.name.lowercase()
+                    }
+                )
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                // Header Row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (selectedCategory.isNotEmpty()) {
+                        IconButton(onClick = { selectedCategory = "" }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                    Text(
+                        text = if (selectedCategory.isEmpty()) "Select Category" else selectedCategory,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color.Black)
+                    }
+                } else {
+                    if (selectedCategory.isEmpty()) {
+                        // Categories Grid List
+                        if (categories.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No categories found", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                items(categories) { category ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .aspectRatio(1.2f)
+                                            .clickable { selectedCategory = category },
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFF0F0F0),
+                                            contentColor = Color.Black
+                                        )
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize().padding(12.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = category,
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                textAlign = TextAlign.Center,
+                                                maxLines = 2
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Respective Providers Grid List sorted
+                        if (categoryProviders.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No providers under this category", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                items(categoryProviders) { provider ->
+                                    ProviderGridCard(
+                                        provider = provider,
+                                        onBookClick = onBookClick,
+                                        userLat = userLat,
+                                        userLng = userLng
+                                    )
+                                }
+                            }
                         }
                     }
                 }

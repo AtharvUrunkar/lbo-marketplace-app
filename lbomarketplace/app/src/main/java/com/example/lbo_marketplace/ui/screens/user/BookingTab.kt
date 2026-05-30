@@ -26,6 +26,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import com.example.lbo_marketplace.booking.BookingViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -35,6 +37,8 @@ fun BookingTab(
     bookingViewModel: BookingViewModel,
     header: @Composable () -> Unit = {}
 ) {
+
+    val context = LocalContext.current
 
     val currentUser =
         FirebaseAuth.getInstance().currentUser
@@ -258,7 +262,17 @@ fun BookingTab(
                         providerId = providerId,
                         customerId = currentUser.uid,
                         rating = rating,
-                        feedback = feedback
+                        feedback = feedback,
+                        onResult = { result ->
+                            result.fold(
+                                onSuccess = {
+                                    Toast.makeText(context, "Review submitted successfully!", Toast.LENGTH_SHORT).show()
+                                },
+                                onFailure = { error ->
+                                    Toast.makeText(context, error.message ?: "Failed to submit review", Toast.LENGTH_LONG).show()
+                                }
+                            )
+                        }
                     )
                 }
 

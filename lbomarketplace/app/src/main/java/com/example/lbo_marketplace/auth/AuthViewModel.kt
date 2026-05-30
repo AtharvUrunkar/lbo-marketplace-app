@@ -63,7 +63,10 @@ class AuthViewModel : ViewModel() {
         name: String, 
         email: String, 
         password: String,
-        phoneNumber: String = "",
+        phone: String = "",
+        address: String = "",
+        city: String = "",
+        area: String = "",
         pincode: String = "",
         latitude: Double = 0.0,
         longitude: Double = 0.0
@@ -81,7 +84,14 @@ class AuthViewModel : ViewModel() {
 
                     email,
 
-                    password, phoneNumber, pincode, latitude, longitude
+                    password,
+                    phone,
+                    address,
+                    city,
+                    area,
+                    pincode,
+                    latitude,
+                    longitude
                 )
 
             _authState.value =

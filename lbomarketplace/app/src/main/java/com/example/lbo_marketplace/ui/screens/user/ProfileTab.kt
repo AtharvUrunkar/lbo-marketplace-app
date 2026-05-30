@@ -70,7 +70,8 @@ fun ProfileTab(
     var userName by remember { mutableStateOf("") }
     var userAddress by remember { mutableStateOf("") }
     var userPhone by remember { mutableStateOf("") }
-    var lastProfileUpdate by remember { mutableStateOf(0L) }
+    var lastProfilePicUpdate by remember { mutableStateOf(0L) }
+    var lastInfoUpdate by remember { mutableStateOf(0L) }
     var showEditDialog by remember { mutableStateOf(false) }
 
     val name = userName.ifBlank { user?.displayName?.ifBlank { null } ?: "User Name" }
@@ -87,7 +88,10 @@ fun ProfileTab(
                     userName = document.getString("name") ?: ""
                     userAddress = document.getString("address") ?: ""
                     userPhone = document.getString("phone") ?: ""
-                    lastProfileUpdate = document.getLong("lastProfileUpdate") ?: 0L
+                    
+                    val fallbackTime = document.getLong("lastProfileUpdate") ?: 0L
+                    lastProfilePicUpdate = document.getLong("lastProfilePicUpdate") ?: fallbackTime
+                    lastInfoUpdate = document.getLong("lastInfoUpdate") ?: fallbackTime
                 }
         }
     }
@@ -120,14 +124,14 @@ fun ProfileTab(
                     user?.uid?.let { uid ->
                         FirebaseFirestore.getInstance().collection("users").document(uid).update(mapOf(
                             "profileImageUrl" to imageUrl,
-                            "lastProfileUpdate" to updateTime
+                            "lastProfilePicUpdate" to updateTime
                         ))
                         FirebaseFirestore.getInstance().collection("provider_requests").document(uid)
-                            .update("lastProfileUpdate", updateTime)
+                            .update("lastProfilePicUpdate", updateTime)
                             .addOnFailureListener { /* Ignore if this user is not a provider */ }
                     }
                     profileImageUrl = imageUrl
-                    lastProfileUpdate = updateTime
+                    lastProfilePicUpdate = updateTime
                     Toast.makeText(context, "Profile picture updated", Toast.LENGTH_SHORT).show()
 
                     // Automatically delete previous profile photo from Cloudinary storage to avoid orphan files
@@ -214,8 +218,8 @@ fun ProfileTab(
                     onClick = {
                         val cooldownMs = 48 * 60 * 60 * 1000L
                         val now = System.currentTimeMillis()
-                        if (now - lastProfileUpdate < cooldownMs) {
-                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                        if (now - lastProfilePicUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastProfilePicUpdate)
                             val remainingHours = kotlin.math.ceil(remainingMs.toDouble() / (1000.0 * 60 * 60)).toInt()
                             Toast.makeText(
                                 context,
@@ -259,8 +263,8 @@ fun ProfileTab(
                     TextButton(onClick = {
                         val cooldownMs = 48 * 60 * 60 * 1000L
                         val now = System.currentTimeMillis()
-                        if (now - lastProfileUpdate < cooldownMs) {
-                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                        if (now - lastInfoUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastInfoUpdate)
                             val remainingHours = kotlin.math.ceil(remainingMs.toDouble() / (1000.0 * 60 * 60)).toInt()
                             Toast.makeText(
                                 context,
@@ -269,6 +273,7 @@ fun ProfileTab(
                             ).show()
                             return@TextButton
                         }
+                        Toast.makeText(context, "Note: Edits locked for 48 hours once saved.", Toast.LENGTH_LONG).show()
                         showEditDialog = true
                     }) {
                         Text("Edit", color = Color.Black, fontWeight = FontWeight.Bold)
@@ -324,6 +329,13 @@ fun ProfileTab(
             title = { Text("Edit Profile Info", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
+                    Text(
+                        text = "⚠️ Edits are locked for 48 hours after saving.",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
                     OutlinedTextField(
                         value = editNameInput,
                         onValueChange = { editNameInput = it },
@@ -358,11 +370,11 @@ fun ProfileTab(
                         // Cooldown Check: 48 Hours Limit
                         val cooldownMs = 48 * 60 * 60 * 1000L
                         val now = System.currentTimeMillis()
-                        if (now - lastProfileUpdate < cooldownMs) {
-                            val remainingMs = cooldownMs - (now - lastProfileUpdate)
+                        if (now - lastInfoUpdate < cooldownMs) {
+                            val remainingMs = cooldownMs - (now - lastInfoUpdate)
                             val hours = remainingMs / (1000 * 60 * 60)
                             val minutes = (remainingMs % (1000 * 60 * 60)) / (1000 * 60)
-                            val tryAfterTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(java.util.Date(lastProfileUpdate + cooldownMs))
+                            val tryAfterTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(java.util.Date(lastInfoUpdate + cooldownMs))
                             Toast.makeText(context, "Try after $tryAfterTime ($hours hrs, $minutes mins remaining)", Toast.LENGTH_LONG).show()
                             return@Button
                         }
@@ -373,24 +385,24 @@ fun ProfileTab(
                                 "name" to editNameInput,
                                 "phone" to editPhoneInput,
                                 "address" to editAddressInput,
-                                "lastProfileUpdate" to updateTime
+                                "lastInfoUpdate" to updateTime
                             )
                             FirebaseFirestore.getInstance().collection("users").document(uid).update(data)
                                 .addOnSuccessListener {
-                                    // Soft-update provider_requests if this user is a provider
-                                    FirebaseFirestore.getInstance().collection("provider_requests").document(uid)
-                                        .update(mapOf("name" to editNameInput, "lastProfileUpdate" to updateTime))
-                                        .addOnFailureListener { /* Ignore if document doesn't exist for this user */ }
+                                     // Soft-update provider_requests if this user is a provider
+                                     FirebaseFirestore.getInstance().collection("provider_requests").document(uid)
+                                         .update(mapOf("name" to editNameInput, "lastInfoUpdate" to updateTime))
+                                         .addOnFailureListener { /* Ignore if document doesn't exist for this user */ }
 
-                                    userName = editNameInput
-                                    userPhone = editPhoneInput
-                                    userAddress = editAddressInput
-                                    lastProfileUpdate = updateTime
-                                    showEditDialog = false
-                                    Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                                     userName = editNameInput
+                                     userPhone = editPhoneInput
+                                     userAddress = editAddressInput
+                                     lastInfoUpdate = updateTime
+                                     showEditDialog = false
+                                     Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
                                 }
                                 .addOnFailureListener {
-                                    Toast.makeText(context, "Update failed: ${it.message}", Toast.LENGTH_SHORT).show()
+                                     Toast.makeText(context, "Update failed: ${it.message}", Toast.LENGTH_SHORT).show()
                                 }
                         }
                     },

@@ -141,6 +141,22 @@ fun ServicesTab(
             ) {
 
                 items(filteredProviders) { provider ->
+                    var dynamicProfileImageUrl by remember(provider.id) { mutableStateOf<String?>(null) }
+
+                    LaunchedEffect(provider.id) {
+                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                            .collection("users")
+                            .document(provider.id)
+                            .get()
+                            .addOnSuccessListener { doc ->
+                                if (doc != null && doc.exists()) {
+                                    val url = doc.getString("profileImageUrl")
+                                    if (!url.isNullOrBlank()) {
+                                        dynamicProfileImageUrl = url
+                                    }
+                                }
+                            }
+                    }
 
                     Card(
 
@@ -166,16 +182,15 @@ fun ServicesTab(
 
                         ) {
 
-                            val imageUrl =
-                                provider.profileImage ?: provider.profileImageUrl
+                            val imageUrl = dynamicProfileImageUrl ?: provider.profileImage ?: provider.profileImageUrl
 
                             if (
                                 !imageUrl.isNullOrBlank()
                             ) {
 
-                                AsyncImage(
+                                androidx.compose.foundation.Image(
 
-                                    model = imageUrl,
+                                    painter = coil.compose.rememberAsyncImagePainter(imageUrl),
 
                                     contentDescription = null,
 

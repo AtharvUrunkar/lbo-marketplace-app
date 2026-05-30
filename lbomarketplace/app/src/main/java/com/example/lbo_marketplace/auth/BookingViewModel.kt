@@ -91,11 +91,13 @@ class BookingViewModel : ViewModel() {
         providerId: String,
         customerId: String,
         rating: Float,
-        feedback: String
+        feedback: String,
+        onResult: (Result<String>) -> Unit = {}
     ) {
         viewModelScope.launch {
-            repo.completeBookingWithFeedback(bookingId, providerId, rating, feedback)
+            val result = repo.completeBookingWithFeedback(bookingId, providerId, rating, feedback)
             loadCustomerBookings(customerId)
+            onResult(result)
         }
     }
 }

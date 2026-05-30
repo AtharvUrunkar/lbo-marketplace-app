@@ -464,13 +464,6 @@ fun DashboardScreen(
                                 Modifier.height(24.dp)
                         )
 
-                        Text(
-                            text = "📍 Explore by Location",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-
                         Spacer(
                             modifier =
                                 Modifier.height(12.dp)
@@ -670,9 +663,16 @@ fun DashboardScreen(
         val clusterName = selectedClusterForPopup!!
         val clusterProvidersList = remember(clusterName, providers) {
             providers.filter { provider ->
-                provider.city.contains(clusterName, ignoreCase = true) ||
-                provider.area.contains(clusterName, ignoreCase = true) ||
-                provider.fullAddress.contains(clusterName, ignoreCase = true)
+                val searchTerms = when (clusterName.lowercase()) {
+                    "belgav", "belgaum" -> listOf("belgav", "belgaum")
+                    "ichalkaranji", "shilkaranji", "ichalkarnji" -> listOf("ichalkaranji", "shilkaranji", "ichalkarnji")
+                    else -> listOf(clusterName.lowercase())
+                }
+                searchTerms.any { term ->
+                    provider.city.contains(term, ignoreCase = true) ||
+                    provider.area.contains(term, ignoreCase = true) ||
+                    provider.fullAddress.contains(term, ignoreCase = true)
+                }
             }.sortedByDescending { it.rating }
         }
 
@@ -1053,10 +1053,24 @@ fun ProviderDynamicVideoPlayer(
         }
     }
 
-    DisposableEffect(Unit) {
-
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
+                    exoPlayer.pause()
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
+                    if (isActive) {
+                        exoPlayer.play()
+                    }
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
-
+            lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer.release()
         }
     }
@@ -1230,6 +1244,23 @@ fun ProviderGridCard(
     modifier: Modifier = Modifier
 ) {
 
+    var dynamicProfileImageUrl by remember(provider.id) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(provider.id) {
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(provider.id)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (doc != null && doc.exists()) {
+                    val url = doc.getString("profileImageUrl")
+                    if (!url.isNullOrBlank()) {
+                        dynamicProfileImageUrl = url
+                    }
+                }
+            }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -1248,13 +1279,12 @@ fun ProviderGridCard(
                 .background(Color(0xFFF8F8F8))
         ) {
 
-            val imageUrl =
-                provider.profileImage ?: provider.profileImageUrl
+            val imageUrl = dynamicProfileImageUrl ?: provider.profileImage ?: provider.profileImageUrl
 
             if (!imageUrl.isNullOrBlank()) {
 
-                AsyncImage(
-                    model = imageUrl,
+                Image(
+                    painter = coil.compose.rememberAsyncImagePainter(imageUrl),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -203,6 +204,22 @@ fun ApplyProviderScreen(
         city = locationData.city
         area = locationData.area
         fullAddress = locationData.fullAddress
+    }
+
+    fun geocodeAddress(context: Context, city: String, area: String, fullAddress: String): Pair<Double, Double> {
+        val addressQuery = listOf(fullAddress, area, city).filter { it.isNotBlank() }.joinToString(", ")
+        if (addressQuery.isBlank()) return Pair(0.0, 0.0)
+        return try {
+            val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
+            val addresses = geocoder.getFromLocationName(addressQuery, 1)
+            if (!addresses.isNullOrEmpty()) {
+                Pair(addresses[0].latitude, addresses[0].longitude)
+            } else {
+                Pair(0.0, 0.0)
+            }
+        } catch (e: Exception) {
+            Pair(0.0, 0.0)
+        }
     }
 
     // =====================================================================================
@@ -471,6 +488,30 @@ fun ApplyProviderScreen(
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Black, focusedLabelColor = Color.Black)
             )
+            Spacer(modifier = Modifier.height(4.dp))
+            val categorySuggestions = listOf("Doctor", "Electrician", "Plumber", "AC Repair", "Carpenter", "Tuition Tutor", "Painter", "Banquet Hall", "Civil Lawyer", "Pest Control")
+            val filteredCatSuggestions = categorySuggestions.filter { it.contains(customCategory, ignoreCase = true) }
+            if (filteredCatSuggestions.isNotEmpty()) {
+                androidx.compose.foundation.lazy.LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    items(filteredCatSuggestions) { suggestion ->
+                        SuggestionChip(
+                            onClick = { customCategory = suggestion },
+                            label = { Text(suggestion) },
+                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                containerColor = Color(0xFFF5F5F5),
+                                labelColor = Color.Black
+                            ),
+                            border = SuggestionChipDefaults.suggestionChipBorder(
+                                enabled = true,
+                                borderColor = Color.LightGray
+                            )
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = customSubCategory,
@@ -523,20 +564,49 @@ fun ApplyProviderScreen(
             Text("Get Current Location", fontWeight = FontWeight.Bold)
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text("Address Details (Mandatory)", fontWeight = FontWeight.Bold, color = Color.Black)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = city,
+            onValueChange = { city = it },
+            label = { Text("City (e.g. Sangli)") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Black,
+                focusedLabelColor = Color.Black
+            )
+        )
         Spacer(modifier = Modifier.height(12.dp))
-        if (city.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("📍 City: $city", color = Color.Black, fontWeight = FontWeight.Bold)
-                    Text("📍 Area: $area", color = Color.Black)
-                    Text("📍 Address: $fullAddress", color = Color.DarkGray, fontSize = 12.sp)
-                }
-            }
-        }
+
+        OutlinedTextField(
+            value = area,
+            onValueChange = { area = it },
+            label = { Text("Area / Locality") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Black,
+                focusedLabelColor = Color.Black
+            )
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = fullAddress,
+            onValueChange = { fullAddress = it },
+            label = { Text("Full Address") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Black,
+                focusedLabelColor = Color.Black
+            )
+        )
+
         Spacer(modifier = Modifier.height(30.dp))
 
         // ── 🚀 FORM SUBMIT & UPLOAD INITIATION BUTTON ──
@@ -545,10 +615,23 @@ fun ApplyProviderScreen(
                 val finalCategory = if (selectedCategory == "Other") customCategory else selectedCategory
                 val finalSubCategory = if (selectedCategory == "Other") customSubCategory else selectedSubCategory
 
-                if (name.isBlank() || finalCategory.isBlank() || finalSubCategory.isBlank() || experience.isBlank()) {
-                    Toast.makeText(context, "Fill all required fields", Toast.LENGTH_SHORT).show()
+                if (name.isBlank() || experience.isBlank() || city.isBlank() || area.isBlank() || fullAddress.isBlank()) {
+                    Toast.makeText(context, "Fill all required fields, including complete Address details", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
+
+                if (selectedCategory == "Other") {
+                    if (customCategory.isBlank() && customSubCategory.isBlank()) {
+                        Toast.makeText(context, "At least one Custom Category or Custom Sub-category is required", Toast.LENGTH_LONG).show()
+                        return@Button
+                    }
+                } else {
+                    if (selectedCategory.isBlank() || selectedSubCategory.isBlank()) {
+                        Toast.makeText(context, "Please select both Category and Sub-category", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                }
+
                 if (verificationDocUri == null) {
                     Toast.makeText(context, "Upload PDF or Image verification document", Toast.LENGTH_SHORT).show()
                     return@Button
@@ -563,15 +646,31 @@ fun ApplyProviderScreen(
                 }
                 
                 isSubmitting = true
-                val combinedServiceType = "$finalCategory - $finalSubCategory"
+                val combinedServiceType = if (selectedCategory == "Other") {
+                    when {
+                        customCategory.isNotBlank() && customSubCategory.isNotBlank() -> "$customCategory - $customSubCategory"
+                        customCategory.isNotBlank() -> customCategory
+                        else -> "Other - $customSubCategory"
+                    }
+                } else {
+                    "$selectedCategory - $selectedSubCategory"
+                }
+
+                var finalLat = latitude
+                var finalLng = longitude
+                if (finalLat == 0.0 && finalLng == 0.0) {
+                    val geocoded = geocodeAddress(context, city, area, fullAddress)
+                    finalLat = geocoded.first
+                    finalLng = geocoded.second
+                }
                 
                 onSubmit(
                     name,
                     combinedServiceType,
                     description,
                     experience,
-                    latitude,
-                    longitude,
+                    finalLat,
+                    finalLng,
                     city,
                     area,
                     fullAddress,
