@@ -2,8 +2,11 @@ package com.example.lbo_marketplace.ui.screens.user
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -60,6 +63,24 @@ fun BookingTab(
     val bookings =
         bookingViewModel.customerBookings
 
+    var selectedFilter by remember { mutableStateOf("All") }
+    val filterOptions = listOf("All", "Pending", "Approved", "Withdrawn")
+
+    val filteredBookings = remember(bookings, selectedFilter) {
+        when (selectedFilter) {
+            "Pending" -> bookings.filter { (it["status"] as? String) == "PENDING" }
+            "Approved" -> bookings.filter {
+                val s = it["status"] as? String
+                s == "CONFIRMED" || s == "COMPLETED"
+            }
+            "Withdrawn" -> bookings.filter {
+                val s = it["status"] as? String
+                s == "WITHDRAWN" || s == "REJECTED"
+            }
+            else -> bookings
+        }
+    }
+
     Column(
 
         modifier =
@@ -81,27 +102,80 @@ fun BookingTab(
 
         ) {
 
-            Text(
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
 
-                text = "My Bookings",
+                    text = "My bookings",
 
-                style =
-                    MaterialTheme
-                        .typography
-                        .titleLarge,
+                    style =
+                        MaterialTheme
+                            .typography
+                            .titleLarge,
 
-                fontWeight =
-                    FontWeight.Bold,
+                    fontWeight =
+                        FontWeight.Bold,
 
-                color = Color.Black
+                    color = Color.Black
+                )
+
+                Text(
+                    text = "${filteredBookings.size} total",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(
+                modifier =
+                    Modifier.height(12.dp)
             )
+
+            // Horizontal scrollable Row for filter chips
+            val filterScrollState = rememberScrollState()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(filterScrollState)
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                filterOptions.forEach { option ->
+                    val isSelected = selectedFilter == option
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(if (isSelected) Color.Black else Color.Transparent)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) Color.Black else Color(0xFFE0E0E0),
+                                shape = RoundedCornerShape(50.dp)
+                            )
+                            .clickable { selectedFilter = option }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = option,
+                            color = if (isSelected) Color.White else Color.Black,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
+                }
+            }
 
             Spacer(
                 modifier =
                     Modifier.height(16.dp)
             )
 
-            if (bookings.isEmpty()) {
+            if (filteredBookings.isEmpty()) {
 
                 Box(
 
@@ -132,7 +206,10 @@ fun BookingTab(
 
                         Text(
 
-                            text = "No bookings yet",
+                            text = when (selectedFilter) {
+                                "All" -> "No bookings yet"
+                                else -> "No $selectedFilter bookings"
+                            },
 
                             style =
                                 MaterialTheme
@@ -152,8 +229,10 @@ fun BookingTab(
 
                         Text(
 
-                            text =
-                                "Search and book local experts from the Home tab.",
+                            text = when (selectedFilter) {
+                                "All" -> "Search and book local experts from the Home tab."
+                                else -> "Bookings with status '$selectedFilter' will appear here."
+                            },
 
                             style =
                                 MaterialTheme
@@ -185,7 +264,7 @@ fun BookingTab(
 
                 ) {
 
-                    items(bookings) { booking ->
+                    items(filteredBookings) { booking ->
 
                         CustomerBookingCard(
 

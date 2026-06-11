@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -374,10 +375,12 @@ fun HomeTab(
                         }
                     }
 
+
                     Spacer(
                         modifier =
-                            Modifier.height(24.dp)
+                            Modifier.height(20.dp)
                     )
+
 
                     val clustersList =
                         listOf(
@@ -404,23 +407,44 @@ fun HomeTab(
                                         .aspectRatio(1.2f)
                                         .clickable {
                                             selectedClusterForPopup = clusterName
-                                            // Future feature: Navigation to new screen can be handled here
                                         },
-                                    shape = RoundedCornerShape(24.dp),
+                                    shape = RoundedCornerShape(20.dp),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = Color(0xFFE0E0E0),
-                                        contentColor = Color.Black
-                                    )
+                                        containerColor = Color.White
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEBEBEB)),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                 ) {
                                     Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.CenterStart
                                     ) {
-                                        Text(
-                                            text = clusterName,
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Column(
+                                            verticalArrangement = Arrangement.Center,
+                                            horizontalAlignment = Alignment.Start
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.LocationOn,
+                                                contentDescription = null,
+                                                tint = Color.Black.copy(alpha = 0.6f),
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = clusterName,
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color.Black
+                                            )
+                                            Text(
+                                                text = "Explore services",
+                                                fontSize = 10.sp,
+                                                color = Color.Gray,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -440,23 +464,44 @@ fun HomeTab(
                                         .aspectRatio(1.2f)
                                         .clickable {
                                             selectedClusterForPopup = clusterName
-                                            // Future feature: Navigation to new screen can be handled here
                                         },
-                                    shape = RoundedCornerShape(24.dp),
+                                    shape = RoundedCornerShape(20.dp),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = Color(0xFFE0E0E0),
-                                        contentColor = Color.Black
-                                    )
+                                        containerColor = Color.White
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEBEBEB)),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                 ) {
                                     Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.CenterStart
                                     ) {
-                                        Text(
-                                            text = clusterName,
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Column(
+                                            verticalArrangement = Arrangement.Center,
+                                            horizontalAlignment = Alignment.Start
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.LocationOn,
+                                                contentDescription = null,
+                                                tint = Color.Black.copy(alpha = 0.6f),
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = clusterName,
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color.Black
+                                            )
+                                            Text(
+                                                text = "Explore services",
+                                                fontSize = 10.sp,
+                                                color = Color.Gray,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }

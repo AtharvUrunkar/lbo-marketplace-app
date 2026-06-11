@@ -456,17 +456,17 @@ fun DashboardScreen(
 
                         Spacer(
                             modifier =
-                                Modifier.height(10.dp)
+                                Modifier.height(8.dp)
                         )
 
                         Spacer(
                             modifier =
-                                Modifier.height(24.dp)
+                                Modifier.height(20.dp)
                         )
 
                         Spacer(
                             modifier =
-                                Modifier.height(12.dp)
+                                Modifier.height(9.dp)
                         )
 
                         Column(

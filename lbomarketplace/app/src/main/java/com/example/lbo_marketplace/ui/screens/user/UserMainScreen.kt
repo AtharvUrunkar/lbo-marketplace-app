@@ -38,6 +38,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.lbo_marketplace.R
 import com.example.lbo_marketplace.auth.AuthViewModel
+import com.example.lbo_marketplace.auth.AuthState
 import com.example.lbo_marketplace.auth.ProviderViewModel
 import com.example.lbo_marketplace.booking.BookingViewModel
 import com.example.lbo_marketplace.ui.screens.user.chat.ChatScreen
@@ -45,6 +46,15 @@ import com.google.firebase.auth.FirebaseAuth
 import coil.compose.AsyncImage
 import java.io.File
 import java.io.FileOutputStream
+import android.view.ViewGroup
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.draw.shadow
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
+import androidx.media3.ui.AspectRatioFrameLayout
+
 
 @Composable
 fun UserMainScreen(
@@ -64,6 +74,8 @@ fun UserMainScreen(
     val providerViewModel: ProviderViewModel = viewModel()
     val bookingViewModel: BookingViewModel = viewModel()
     val user = FirebaseAuth.getInstance().currentUser
+    val authState = authViewModel.authState.value
+    val isProvider = authState is AuthState.Authenticated && authState.role == "SERVICE_PROVIDER"
     var customerName by remember { mutableStateOf("") }
     var customerProfileImageUrl by remember { mutableStateOf("") }
     var hasCheckedProfileImageOnboarding by remember { mutableStateOf(false) }
@@ -175,239 +187,241 @@ fun UserMainScreen(
             onDismissMenu = { menuExpanded = false },
             onAboutClick = { showAboutDialog = true },
             onFAQClick = { showFAQDialog = true },
-            onHelpClick = { showHelpDialog = true }
+            onHelpClick = { showHelpDialog = true },
+            isProvider = isProvider,
+            onSwitchToProviderClick = {
+                authViewModel.isProviderInCustomerMode.value = false
+            }
         )
     }
 
-    if (showChatScreen) {
-        BackHandler(onBack = { showChatScreen = false })
-        ChatScreen(onBack = { showChatScreen = false })
-        return
-    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = Color.White,
+            contentColor = Color.Black,
+            topBar = {
+                GlobalHeader()
+            },
+            bottomBar = {
+                NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
+                    NavigationBarItem(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        icon = { Icon(Icons.Default.Home, null) },
+                        label = { Text("Home") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        icon = { Icon(Icons.Default.Notifications, null) },
+                        label = { Text("Community") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        icon = { Icon(Icons.AutoMirrored.Filled.List, null) },
+                        label = { Text("Bookings") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 3,
+                        onClick = { selectedTab = 3 },
+                        icon = { Icon(Icons.Default.Person, null) },
+                        label = { Text("Profile") }
+                    )
+                }
+            },
+            floatingActionButton = {
+                ChatbotVideoButton(
+                    onClick = { showChatScreen = true },
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+        ) { padding ->
+            Box(modifier = Modifier.padding(padding).background(Color.White)) {
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = { fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300)) },
+                    label = ""
+                ) { targetTab ->
+                    when (targetTab) {
+                        0 -> HomeTab(
+                            onBookClick = { viewingProviderId = it },
+                            authViewModel = authViewModel
+                        )
+                        1 -> CommunityTab(header = {})
+                        2 -> BookingTab(bookingViewModel = bookingViewModel, header = {})
+                        3 -> ProfileTab(authViewModel = authViewModel, onApplyClick = { showApplyScreen = true }, header = {})
+                    }
+                }
+            }
+        }
 
-    if (viewingProviderId != null) {
-        val provider = providerViewModel.providers.find { it.id == viewingProviderId }
-        if (provider != null) {
-            ProviderDetailsScreen(
-                provider = provider,
-                userLat = userLat,
-                userLng = userLng,
-                onBack = { viewingProviderId = null },
-                onBookNow = {
-                    selectedProviderId = viewingProviderId
-                    viewingProviderId = null
+        if (showAboutDialog) GlobalMenuDialog(
+            "About LBO",
+            "LBO – Together We Grow 🤝\n\nConnecting local experts with our community seamlessly.",
+            { showAboutDialog = false }
+        )
+        if (showFAQDialog) GlobalMenuDialog(
+            "FAQ",
+            "Q: How do I book?\nA: Search and click 'Book Now'.\n\nQ: Is it free?\nA: App is free; pay the provider directly.",
+            { showFAQDialog = false }
+        )
+        if (showHelpDialog) {
+            AlertDialog(
+                onDismissRequest = { showHelpDialog = false },
+                title = { Text("Help & Support", fontWeight = FontWeight.Bold) },
+                text = { Text("If you have some doubts contact admin or refered person") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showHelpDialog = false
+                            uriHandler.openUri("mailto:lbo.org.ask@gmail.com")
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+                    ) { Text("Contact") }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showHelpDialog = false },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
+                    ) { Text("Close") }
+                },
+                shape = RoundedCornerShape(24.dp),
+                containerColor = Color.White
+            )
+        }
+
+        if (showProfileImageOnboardingDialog) {
+            AlertDialog(
+                onDismissRequest = { showProfileImageOnboardingDialog = false },
+                title = {
+                    Text(
+                        text = "Welcome to LBO!",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Let's personalize your account! Take a moment to setup your profile and upload a clean profile picture.",
+                        color = Color.DarkGray
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showProfileImageOnboardingDialog = false
+                            selectedTab = 3 // Redirects straight to the Profile Tab!
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+                    ) {
+                        Text("Setup Now", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showProfileImageOnboardingDialog = false }
+                    ) {
+                        Text("Later", color = Color.Black, fontWeight = FontWeight.Medium)
+                    }
+                },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(20.dp)
+            )
+        }
+
+        // Overlay Screens
+        if (showChatScreen) {
+            BackHandler(onBack = { showChatScreen = false })
+            ChatScreen(onBack = { showChatScreen = false })
+        }
+
+        if (viewingProviderId != null) {
+            val provider = providerViewModel.providers.find { it.id == viewingProviderId }
+            if (provider != null) {
+                BackHandler(onBack = { viewingProviderId = null })
+                ProviderDetailsScreen(
+                    provider = provider,
+                    userLat = userLat,
+                    userLng = userLng,
+                    onBack = { viewingProviderId = null },
+                    onBookNow = {
+                        selectedProviderId = viewingProviderId
+                        viewingProviderId = null
+                    }
+                )
+            }
+        }
+
+        if (selectedProviderId != null) {
+            val selectedProvider = providerViewModel.providers.find { it.id == selectedProviderId }
+            val pName = selectedProvider?.name ?: "Provider"
+
+            BackHandler(onBack = { selectedProviderId = null })
+            BookingScreen(
+                providerId = selectedProviderId!!,
+                onBack = { selectedProviderId = null },
+                onSubmit = { problem, address, date, contact ->
+                    user?.let {
+                        val finalCustomerName = customerName.ifBlank { it.displayName ?: "User" }
+                        bookingViewModel.book(
+                            customerId = it.uid,
+                            customerName = finalCustomerName,
+                            customerPhone = contact,
+                            providerId = selectedProviderId!!,
+                            providerName = pName,
+                            problemTitle = "Service Request",
+                            problemDescription = problem,
+                            address = address,
+                            preferredDate = date,
+                            preferredTime = "TBD",
+                            onSuccess = { selectedProviderId = null }
+                        )
+                    }
                 }
             )
-            return
         }
-    }
 
-    if (selectedProviderId != null) {
-        val selectedProvider = providerViewModel.providers.find { it.id == selectedProviderId }
-        val pName = selectedProvider?.name ?: "Provider"
+        if (showApplyScreen) {
+            BackHandler(onBack = { showApplyScreen = false })
+            ApplyProviderScreen {
+                    name: String,
+                    serviceType: String,
+                    description: String,
+                    experience: String,
+                    lat: Double,
+                    lng: Double,
+                    city: String,
+                    area: String,
+                    fullAddress: String,
+                    verificationDocUri: Uri,
+                    profilePhotoUri: Uri? ->
 
-        BookingScreen(
-            providerId = selectedProviderId!!,
-            onBack = { selectedProviderId = null },
-            onSubmit = { problem, address, date, contact ->
                 user?.let {
-                    val finalCustomerName = customerName.ifBlank { it.displayName ?: "User" }
-                    bookingViewModel.book(
-                        customerId = it.uid,
-                        customerName = finalCustomerName,
-                        customerPhone = contact,
-                        providerId = selectedProviderId!!,
-                        providerName = pName,
-                        problemTitle = "Service Request",
-                        problemDescription = problem,
-                        address = address,
-                        preferredDate = date,
-                        preferredTime = "TBD",
-                        onSuccess = { selectedProviderId = null }
+
+                    providerViewModel.applyWithDetails(
+                        context = context,
+                        userId = it.uid,
+                        email = it.email ?: "",
+                        name = name,
+                        serviceType = serviceType,
+                        description = description,
+                        experience = experience,
+                        latitude = lat,
+                        longitude = lng,
+                        city = city,
+                        area = area,
+                        fullAddress = fullAddress,
+                        verificationDocUri = verificationDocUri,
+                        profilePhotoUri = profilePhotoUri
                     )
                 }
-            }
-        )
-        return
-    }
 
-    if (showApplyScreen) {
-        BackHandler(onBack = { showApplyScreen = false })
-        ApplyProviderScreen {
-                name: String,
-                serviceType: String,
-                description: String,
-                experience: String,
-                lat: Double,
-                lng: Double,
-                city: String,
-                area: String,
-                fullAddress: String,
-                verificationDocUri: Uri,
-                profilePhotoUri: Uri? ->
-
-            user?.let {
-
-                providerViewModel.applyWithDetails(
-                    context = context,
-                    userId = it.uid,
-                    email = it.email ?: "",
-                    name = name,
-                    serviceType = serviceType,
-                    description = description,
-                    experience = experience,
-                    latitude = lat,
-                    longitude = lng,
-                    city = city,
-                    area = area,
-                    fullAddress = fullAddress,
-                    verificationDocUri = verificationDocUri,
-                    profilePhotoUri = profilePhotoUri
-                )
-            }
-
-            showApplyScreen =
-                false
-        }
-        return
-    }
-
-    Scaffold(
-        containerColor = Color.White,
-        contentColor = Color.Black,
-        topBar = {
-            GlobalHeader()
-        },
-        bottomBar = {
-            NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
-                NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Default.Home, null) },
-                    label = { Text("Home") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Notifications, null) },
-                    label = { Text("Community") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, null) },
-                    label = { Text("Bookings") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
-                    icon = { Icon(Icons.Default.Person, null) },
-                    label = { Text("Profile") }
-                )
-            }
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showChatScreen = true },
-                shape = CircleShape,
-                containerColor = Color(0xFF6C63FF),
-                contentColor = Color.White,
-                modifier = Modifier.padding(bottom = 8.dp)
-            ) { Icon(Icons.Default.Chat, contentDescription = "AI Chat Assistant") }
-        }
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding).background(Color.White)) {
-            AnimatedContent(
-                targetState = selectedTab,
-                transitionSpec = { fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300)) },
-                label = ""
-            ) { targetTab ->
-                when (targetTab) {
-                    0 -> HomeTab(
-                        onBookClick = { viewingProviderId = it },
-                        authViewModel = authViewModel
-                    )
-                    1 -> CommunityTab(header = {})
-                    2 -> BookingTab(bookingViewModel = bookingViewModel, header = {})
-                    3 -> ProfileTab(authViewModel = authViewModel, onApplyClick = { showApplyScreen = true }, header = {})
-                }
+                showApplyScreen =
+                    false
             }
         }
-    }
-
-    if (showAboutDialog) GlobalMenuDialog(
-        "About LBO",
-        "LBO – Together We Grow 🤝\n\nConnecting local experts with our community seamlessly.",
-        { showAboutDialog = false }
-    )
-    if (showFAQDialog) GlobalMenuDialog(
-        "FAQ",
-        "Q: How do I book?\nA: Search and click 'Book Now'.\n\nQ: Is it free?\nA: App is free; pay the provider directly.",
-        { showFAQDialog = false }
-    )
-    if (showHelpDialog) {
-        AlertDialog(
-            onDismissRequest = { showHelpDialog = false },
-            title = { Text("Help & Support", fontWeight = FontWeight.Bold) },
-            text = { Text("If you have some doubts contact admin or refered person") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showHelpDialog = false
-                        uriHandler.openUri("mailto:lbo.org.ask@gmail.com")
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
-                ) { Text("Contact") }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showHelpDialog = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
-                ) { Text("Close") }
-            },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = Color.White
-        )
-    }
-
-    if (showProfileImageOnboardingDialog) {
-        AlertDialog(
-            onDismissRequest = { showProfileImageOnboardingDialog = false },
-            title = {
-                Text(
-                    text = "Welcome to LBO!",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-            },
-            text = {
-                Text(
-                    text = "Let's personalize your account! Take a moment to setup your profile and upload a clean profile picture.",
-                    color = Color.DarkGray
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showProfileImageOnboardingDialog = false
-                        selectedTab = 3 // Redirects straight to the Profile Tab!
-                    },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
-                ) {
-                    Text("Setup Now", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showProfileImageOnboardingDialog = false }
-                ) {
-                    Text("Later", color = Color.Black, fontWeight = FontWeight.Medium)
-                }
-            },
-            containerColor = Color.White,
-            shape = RoundedCornerShape(20.dp)
-        )
     }
 }
 
@@ -420,7 +434,9 @@ fun Header(
     onDismissMenu: () -> Unit,
     onAboutClick: () -> Unit,
     onFAQClick: () -> Unit,
-    onHelpClick: () -> Unit
+    onHelpClick: () -> Unit,
+    isProvider: Boolean = false,
+    onSwitchToProviderClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -476,6 +492,12 @@ fun Header(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.background(Color.White)
             ) {
+                if (isProvider) {
+                    DropdownMenuItem(
+                        text = { Text("Switch to Provider Dashboard", fontWeight = FontWeight.Bold) },
+                        onClick = { onDismissMenu(); onSwitchToProviderClick() }
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text("About", fontWeight = FontWeight.Bold) },
                     onClick = { onDismissMenu(); onAboutClick() }
@@ -519,6 +541,23 @@ fun ProviderDetailsScreen(
     onBack: () -> Unit,
     onBookNow: () -> Unit
 ) {
+    var dynamicProfileImageUrl by remember(provider.id) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(provider.id) {
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(provider.id)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (doc != null && doc.exists()) {
+                    val url = doc.getString("profileImageUrl")
+                    if (!url.isNullOrBlank()) {
+                        dynamicProfileImageUrl = url
+                    }
+                }
+            }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -543,7 +582,7 @@ fun ProviderDetailsScreen(
                 .background(Color(0xFFF8F8F8)),
             contentAlignment = Alignment.Center
         ) {
-            val imageUrl = provider.profileImage ?: provider.profileImageUrl
+            val imageUrl = dynamicProfileImageUrl ?: provider.profileImage ?: provider.profileImageUrl
             if (!imageUrl.isNullOrBlank()) {
                 AsyncImage(
                     model = imageUrl,
@@ -676,3 +715,68 @@ fun CustomDialog(
             Color.White
     )
 }}
+
+@Composable
+fun ChatbotVideoButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri(
+                Uri.parse("android.resource://${context.packageName}/${R.raw.logo}")
+            )
+            setMediaItem(mediaItem)
+            repeatMode = Player.REPEAT_MODE_ALL
+            volume = 0f
+            playWhenReady = true
+            prepare()
+        }
+    }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
+                    exoPlayer.pause()
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
+                    exoPlayer.play()
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            exoPlayer.release()
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(60.dp)
+            .shadow(6.dp, CircleShape)
+            .clip(CircleShape)
+            .background(Color.Black)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}

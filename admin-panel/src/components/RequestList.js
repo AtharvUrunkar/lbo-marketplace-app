@@ -35,7 +35,7 @@ const STANDARD_CLUSTERS = [
   "Sangli",
   "Kolhapur",
   "Belgaum",
-  "Isselkarinjan"
+  "ichalkaranji"
 ];
 
 function RequestList({ showToast }) {
@@ -47,12 +47,12 @@ function RequestList({ showToast }) {
   const [activePreviewRequest, setActivePreviewRequest] = useState(null);
   const [docLoading, setDocLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Filtering & Selection Assignments
   const [selectedFilterCluster, setSelectedFilterCluster] = useState("All");
   const [categoryAssignments, setCategoryAssignments] = useState({});
   const [clusterAssignments, setClusterAssignments] = useState({});
-  
+
   // Analytics State
   const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -89,7 +89,7 @@ function RequestList({ showToast }) {
 
       for (const document of querySnapshot.docs) {
         const req = { id: document.id, ...document.data() };
-        
+
         // Smart retrieval: fetch user profile for contact & address fallbacks
         try {
           const userDoc = await getDoc(doc(db, "users", req.userId));
@@ -145,8 +145,8 @@ function RequestList({ showToast }) {
     if (addressText.includes("sangli")) return "Sangli";
     if (addressText.includes("kolhapur")) return "Kolhapur";
     if (addressText.includes("belgaum") || addressText.includes("belgav") || addressText.includes("belgavi")) return "Belgaum";
-    if (addressText.includes("ichalkaranji") || addressText.includes("isselkarinjan") || addressText.includes("ichal")) return "Isselkarinjan";
-    
+    if (addressText.includes("ichalkaranji") || addressText.includes("ichalkaranji") || addressText.includes("ichal")) return "ichalkaranji";
+
     return ""; // No suggestion found
   };
 
@@ -160,7 +160,7 @@ function RequestList({ showToast }) {
 
   const getAppCityName = (cluster) => {
     if (cluster === "Belgaum") return "Belgav";
-    if (cluster === "Isselkarinjan") return "Ichalkaranji";
+    if (cluster === "ichalkaranji") return "Ichalkaranji";
     return cluster; // Sangli and Kolhapur match perfectly
   };
 
@@ -229,13 +229,13 @@ function RequestList({ showToast }) {
     try {
       const assignedCat = categoryAssignments[requestId] || STANDARD_CATEGORIES[0];
       const assignedClus = clusterAssignments[requestId] || "Sangli";
-      
+
       const adminUser = auth.currentUser;
       const adminEmail = adminUser ? adminUser.email : "system.admin@lbo.com";
       const adminUid = adminUser ? adminUser.uid : "system";
 
       showToast(`Verifying & Approving ${providerName}...`, "info");
-      
+
       // Update User Document
       await updateDoc(
         doc(db, "users", userId),
@@ -267,7 +267,7 @@ function RequestList({ showToast }) {
       );
 
       showToast(`Successfully verified ${providerName}!`, "success");
-      
+
       if (activePreviewRequest?.id === requestId) {
         setActivePreviewRequest(null);
       }
@@ -295,7 +295,7 @@ function RequestList({ showToast }) {
       );
 
       showToast(`Successfully rejected ${providerName || "Provider"}'s application.`, "success");
-      
+
       if (activePreviewRequest?.id === requestId) {
         setActivePreviewRequest(null);
       }
@@ -357,7 +357,7 @@ function RequestList({ showToast }) {
   // =========================================================
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "32px" }}>
-      
+
       {/* ====================================================================
          🔥 METRICS & ANALYTICS HEADER PANELS
          ==================================================================== */}
@@ -507,7 +507,7 @@ function RequestList({ showToast }) {
             <option value="Sangli">Sangli Cluster</option>
             <option value="Kolhapur">Kolhapur Cluster</option>
             <option value="Belgaum">Belgaum Cluster</option>
-            <option value="Isselkarinjan">Isselkarinjan Cluster</option>
+            <option value="ichalkaranji">ichalkaranji Cluster</option>
           </select>
         </div>
 
@@ -609,7 +609,7 @@ function RequestList({ showToast }) {
                     animationDelay: `${index * 0.05}s`
                   }}
                 >
-                  {/* Brand Monogram Avatar */}
+                  {/* Provider Profile Picture or Monogram Avatar */}
                   <div className="flex-center" style={{
                     width: "54px",
                     height: "54px",
@@ -619,9 +619,18 @@ function RequestList({ showToast }) {
                     fontWeight: "700",
                     fontSize: "1.2rem",
                     flexShrink: 0,
-                    boxShadow: "var(--shadow-sm)"
+                    boxShadow: "var(--shadow-sm)",
+                    overflow: "hidden"
                   }}>
-                    {getInitials(req.name)}
+                    {req.profileImageUrl || req.profileImage || req.userProfile?.profileImageUrl || req.userProfile?.profileImage ? (
+                      <img
+                        src={req.profileImageUrl || req.profileImage || req.userProfile?.profileImageUrl || req.userProfile?.profileImage}
+                        alt={req.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      getInitials(req.name)
+                    )}
                   </div>
 
                   {/* Body Content */}
@@ -907,7 +916,7 @@ function RequestList({ showToast }) {
               overflow: "hidden",
               flexDirection: window.innerWidth < 800 ? "column" : "row"
             }}>
-              
+
               {/* Left Column: Visual Document Viewer (60% width) */}
               <div style={{
                 flex: 3,
@@ -996,8 +1005,34 @@ function RequestList({ showToast }) {
                 background: "var(--bg-card)"
               }}>
                 <div>
-                  <h4 style={{ fontSize: "1.1rem", fontWeight: "800", marginBottom: "12px" }}>Applicant Details</h4>
-                  
+                  <div style={{ display: "flex", gap: "16px", alignItems: "center", marginBottom: "16px" }}>
+                    <div className="flex-center" style={{
+                      width: "60px",
+                      height: "60px",
+                      borderRadius: "50%",
+                      backgroundColor: "var(--bg-input)",
+                      border: "1px solid var(--border-color)",
+                      overflow: "hidden",
+                      flexShrink: 0
+                    }}>
+                      {activePreviewRequest.profileImageUrl || activePreviewRequest.profileImage || activePreviewRequest.userProfile?.profileImageUrl || activePreviewRequest.userProfile?.profileImage ? (
+                        <img
+                          src={activePreviewRequest.profileImageUrl || activePreviewRequest.profileImage || activePreviewRequest.userProfile?.profileImageUrl || activePreviewRequest.userProfile?.profileImage}
+                          alt={activePreviewRequest.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: "1.2rem", fontWeight: "700", color: "var(--color-text-secondary)" }}>
+                          {getInitials(activePreviewRequest.name)}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: "1.1rem", fontWeight: "800", margin: 0 }}>Applicant Details</h4>
+                      <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>ID: {activePreviewRequest.userId}</span>
+                    </div>
+                  </div>
+
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", paddingBottom: "6px" }}>
                       <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", fontWeight: "600" }}>Full Name</span>
@@ -1245,7 +1280,7 @@ function RequestList({ showToast }) {
 
                   {/* Distribution Columns */}
                   <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 700 ? "1fr" : "1fr 1fr", gap: "24px" }}>
-                    
+
                     {/* Categories Bar Distribution Chart */}
                     <div style={{ padding: "16px", backgroundColor: "var(--bg-input)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-color)", display: "flex", flexDirection: "column", gap: "12px" }}>
                       <h4 style={{ fontSize: "0.95rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.03em" }}>Service Categories</h4>
@@ -1304,7 +1339,7 @@ function RequestList({ showToast }) {
                     <h4 style={{ fontSize: "0.95rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: "12px" }}>
                       Admin Verification Audit Logs
                     </h4>
-                    
+
                     {analyticsData.auditLogs.length === 0 ? (
                       <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", padding: "12px", textAlign: "center" }}>
                         No audit logs captured. Verifications will show up here once approved.

@@ -1,7 +1,11 @@
 package com.example.lbo_marketplace.ui.screens.provider
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -51,7 +55,6 @@ fun UpdatesScreen(
             bookingViewModel.loadProviderBookings(it)
         }
     }
-
     val allBookings =
         bookingViewModel.providerBookings
 
@@ -60,6 +63,24 @@ fun UpdatesScreen(
         allBookings.sortedByDescending {
             (it["createdAt"] as? Number)?.toLong() ?: 0L
         }
+
+    var selectedFilter by remember { mutableStateOf("All") }
+    val filterOptions = listOf("All", "Pending", "Approved", "Withdrawn")
+
+    val filteredBookings = remember(sorted, selectedFilter) {
+        when (selectedFilter) {
+            "Pending" -> sorted.filter { (it["status"] as? String) == "PENDING" }
+            "Approved" -> sorted.filter {
+                val s = it["status"] as? String
+                s == "CONFIRMED" || s == "COMPLETED"
+            }
+            "Withdrawn" -> sorted.filter {
+                val s = it["status"] as? String
+                s == "WITHDRAWN" || s == "REJECTED"
+            }
+            else -> sorted
+        }
+    }
 
     Column(
 
@@ -86,33 +107,86 @@ fun UpdatesScreen(
 
         ) {
 
-            Text(
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
 
-                text = "Updates",
+                    text = "Updates",
 
-                style =
-                    MaterialTheme
-                        .typography
-                        .headlineMedium,
+                    style =
+                        MaterialTheme
+                            .typography
+                            .headlineMedium,
 
-                fontWeight =
-                    FontWeight.ExtraBold,
+                    fontWeight =
+                        FontWeight.ExtraBold,
 
-                color = Color.Black
-            )
+                    color = Color.Black
+                )
+
+                Text(
+                    text = "${filteredBookings.size} total",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
 
             Text(
                 text = "All your booking requests & job history.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )
+
+            Spacer(
+                modifier =
+                    Modifier.height(12.dp)
+            )
+
+            // Horizontal scrollable Row for filter chips
+            val filterScrollState = rememberScrollState()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(filterScrollState)
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                filterOptions.forEach { option ->
+                    val isSelected = selectedFilter == option
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(if (isSelected) Color.Black else Color.Transparent)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) Color.Black else Color(0xFFE0E0E0),
+                                shape = RoundedCornerShape(50.dp)
+                            )
+                            .clickable { selectedFilter = option }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = option,
+                            color = if (isSelected) Color.White else Color.Black,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
+                }
+            }
         }
 
         HorizontalDivider(
             color = Color(0xFFEEEEEE)
         )
 
-        if (sorted.isEmpty()) {
+        if (filteredBookings.isEmpty()) {
 
             Box(
 
@@ -127,7 +201,10 @@ fun UpdatesScreen(
             ) {
 
                 Text(
-                    text = "No booking updates yet.",
+                    text = when (selectedFilter) {
+                        "All" -> "No booking updates yet."
+                        else -> "No $selectedFilter updates."
+                    },
                     color = Color.LightGray,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
@@ -152,7 +229,7 @@ fun UpdatesScreen(
             ) {
 
                 items(
-                    items = sorted,
+                    items = filteredBookings,
                     key = {
                         it["bookingId"] as? String ?: it.hashCode().toString()
                     }
