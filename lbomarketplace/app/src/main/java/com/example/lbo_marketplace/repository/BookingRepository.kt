@@ -122,33 +122,30 @@ class BookingRepository {
                 .await()
 
             // =====================================================
-            // 🔥 SEND PROVIDER NOTIFICATION
+            // 🔥 SEND PROVIDER NOTIFICATION (WITH RATIONALE COMMENTS)
             // =====================================================
 
+            // Check if a valid OneSignal Player ID was resolved for the provider
             if (providerPlayerId.isNotEmpty()) {
-
                 try {
+                    // Instantiate the notification repository to make the network request
+                    val notificationRepository = NotificationRepository()
 
-                    val notificationRepository =
-                        NotificationRepository()
+                    // Resolve customer's name from data payload, defaulting to "New User" if null
+                    val customerName = data["customerName"] as? String ?: "New User"
 
-                    val customerName =
-
-                        data["customerName"]
-                                as? String ?: "New User"
-
-                    notificationRepository
-                        .sendNotification(
-
-                            providerPlayerId,
-
-                            "New Booking Request 🚀",
-
-                            "$customerName sent you a booking request"
-                        )
+                    // Trigger the notification dispatch asynchronously
+                    notificationRepository.sendNotification(
+                        // Target provider device player ID
+                        providerPlayerId,
+                        // Title header for the push notification
+                        "New Booking Request 🚀",
+                        // Dynamic message content referencing the booking customer
+                        "$customerName sent you a booking request"
+                    )
 
                 } catch (e: Exception) {
-
+                    // Print stack trace defensively if the notification dispatch fails
                     e.printStackTrace()
                 }
             }

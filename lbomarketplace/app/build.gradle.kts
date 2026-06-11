@@ -36,6 +36,20 @@ android {
             "HF_API_KEY",
             "\"${localProperties.getProperty("HF_API_KEY", "")}\""
         )
+
+        // Inject OneSignal App ID from local.properties into BuildConfig
+        buildConfigField(
+            "String",
+            "ONESIGNAL_APP_ID",
+            "\"${localProperties.getProperty("ONESIGNAL_APP_ID", "ea563567-0403-4d31-af1a-235130fbbd6b")}\""
+        )
+
+        // Inject OneSignal REST API Key from local.properties into BuildConfig
+        buildConfigField(
+            "String",
+            "ONESIGNAL_REST_API_KEY",
+            "\"${localProperties.getProperty("ONESIGNAL_REST_API_KEY", "os_v2_app_5jldkzyeangtdly2enitb655no3iit4a42zu5ge3pilwovaicafj57ww7mgcu6a3zvyo2odguhtiu6hvpynx76jiamz3fuofjyrwvai")}\""
+        )
     }
 
     buildTypes {

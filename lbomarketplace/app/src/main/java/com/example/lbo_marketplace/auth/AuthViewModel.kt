@@ -443,36 +443,55 @@ class AuthViewModel : ViewModel() {
     }
 
     // =====================================================
-    // 🔥 SAVE ONESIGNAL PLAYER ID
+    // 🔥 SAVE ONESIGNAL PLAYER ID (WITH RATIONALE COMMENTS)
     // =====================================================
 
+    // Save the OneSignal Player ID (device registration ID) to the Firestore user profile
     fun saveOneSignalPlayerId(
+        // The unique user document ID in Firestore
         userId: String
     ) {
-
         try {
+            // Retrieve current device registration state from the OneSignal SDK
+            val deviceState = OneSignal.getDeviceState()
+            // Extract the user/player ID from device state (empty if not registered yet)
+            val playerId = deviceState?.userId ?: ""
 
-            val playerId =
-
-                OneSignal.getDeviceState()
-                    ?.userId ?: ""
-
+            // If the Player ID has already been successfully fetched from OneSignal servers:
             if (playerId.isNotEmpty()) {
-
+                // Update the user's Firestore document
                 db.collection("users")
-
+                    // Target the specific user document
                     .document(userId)
-
-                    .update(
-
-                        "oneSignalPlayerId",
-
-                        playerId
-                    )
+                    // Update only the "oneSignalPlayerId" field with the active player ID
+                    .update("oneSignalPlayerId", playerId)
+            } else {
+                // If Player ID is empty (likely due to first launch asynchronous registration delay):
+                // Create an observer to listen for changes to the OneSignal subscription state
+                val observer = object : com.onesignal.OSSubscriptionObserver {
+                    // Method triggered by OneSignal whenever the subscription state changes
+                    override fun onOSSubscriptionChanged(stateChanges: com.onesignal.OSSubscriptionStateChanges) {
+                        // Extract the newly resolved player/user ID from the new state
+                        val newPlayerId = stateChanges.to.userId ?: ""
+                        // If we finally got a valid player ID:
+                        if (newPlayerId.isNotEmpty()) {
+                            // Save this resolved ID to the user's Firestore document
+                            db.collection("users")
+                                // Target the user document
+                                .document(userId)
+                                // Update the oneSignalPlayerId field
+                                .update("oneSignalPlayerId", newPlayerId)
+                            // Remove the observer to clean up resources and prevent memory leaks
+                            OneSignal.removeSubscriptionObserver(this)
+                        }
+                    }
+                }
+                // Register the observer with the OneSignal SDK
+                OneSignal.addSubscriptionObserver(observer)
             }
 
         } catch (e: Exception) {
-
+            // Log any potential exceptions defensively to prevent crash
             e.printStackTrace()
         }
     }

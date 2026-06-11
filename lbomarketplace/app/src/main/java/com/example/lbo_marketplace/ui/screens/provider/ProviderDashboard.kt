@@ -29,6 +29,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.lbo_marketplace.R
 import com.example.lbo_marketplace.auth.AuthViewModel
+import androidx.activity.compose.BackHandler
+import com.example.lbo_marketplace.ui.screens.user.chat.ChatScreen
+import com.example.lbo_marketplace.ui.screens.user.ChatbotVideoButton
+
 
 /**
  * Provider Dashboard Shell.
@@ -63,6 +67,11 @@ fun ProviderDashboard(
     var showHelpDialog by remember {
         mutableStateOf(false)
     }
+
+    var showChatScreen by remember {
+        mutableStateOf(false)
+    }
+
 
     val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -277,11 +286,20 @@ fun ProviderDashboard(
         }
     }
 
-    Scaffold(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
 
-        containerColor = Color.White,
+            containerColor = Color.White,
 
-        bottomBar = {
+            floatingActionButton = {
+                ChatbotVideoButton(
+                    onClick = { showChatScreen = true },
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            },
+
+            bottomBar = {
+
 
             NavigationBar(
                 containerColor = Color.White,
@@ -482,6 +500,13 @@ fun ProviderDashboard(
             }
         }
     }
+
+    if (showChatScreen) {
+        BackHandler(onBack = { showChatScreen = false })
+        ChatScreen(onBack = { showChatScreen = false })
+    }
+}
+
 
     if (showAboutDialog) {
 

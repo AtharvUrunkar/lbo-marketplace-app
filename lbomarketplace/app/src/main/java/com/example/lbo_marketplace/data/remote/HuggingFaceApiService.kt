@@ -8,7 +8,7 @@ import retrofit2.http.POST
 /**
  * Retrofit interface for the Hugging Face Router API.
  * Uses the OpenAI-compatible /v1/chat/completions endpoint.
- * Model: meta-llama/Llama-3.2-1B-Instruct (confirmed working on free tier).
+ * Model: Qwen/Qwen2.5-72B-Instruct (confirmed working on free tier).
  */
 interface HuggingFaceApiService {
 
@@ -22,7 +22,7 @@ interface HuggingFaceApiService {
 // ==================== Request Models ====================
 
 data class ChatCompletionRequest(
-    val model: String = "meta-llama/Llama-3.2-1B-Instruct",
+    val model: String = "Qwen/Qwen2.5-72B-Instruct",
     val messages: List<ChatCompletionMessage>,
 
     @SerializedName("max_tokens")
