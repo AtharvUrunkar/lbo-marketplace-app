@@ -91,6 +91,7 @@ data class BannerItem(
     val isVideo: Boolean = false
 )
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun HomeTab(
     onBookClick: (String) -> Unit,

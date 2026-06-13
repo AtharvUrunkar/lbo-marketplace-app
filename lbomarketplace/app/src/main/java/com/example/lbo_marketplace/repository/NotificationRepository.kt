@@ -72,8 +72,8 @@ class NotificationRepository {
             val request = Request.Builder()
                 // Set target API endpoint URL
                 .url("https://onesignal.com/api/v1/notifications")
-                // Authorize using the basic REST API key in headers
-                .addHeader("Authorization", "Basic $restApiKey")
+                // Authorize using the REST API key (Key is the modern standard)
+                .addHeader("Authorization", "Key $restApiKey")
                 // Explicitly declare JSON payload media type in header
                 .addHeader("Content-Type", "application/json")
                 // Define request method as POST with the JSON body
@@ -107,6 +107,87 @@ class NotificationRepository {
             Log.e(
                 "OneSignal",
                 "JSON Error",
+                e
+            )
+        }
+    }
+
+    // Function to trigger a push notification to all subscribed users
+    fun sendNotificationToAll(
+        // The title of the push notification
+        title: String,
+        // The message body of the push notification
+        message: String
+    ) {
+        try {
+            // Build the JSON payload representing the OneSignal notification parameters
+            val jsonBody = JSONObject().apply {
+                // Attach the OneSignal App ID to authenticate the application scope
+                put("app_id", appId)
+
+                // Attach the "Subscribed Users" segment to target all subscribed devices
+                put(
+                    "included_segments",
+                    JSONArray().put("Subscribed Users")
+                )
+
+                // Define notification title under the English locale key ("en")
+                put(
+                    "headings",
+                    JSONObject().put("en", title)
+                )
+
+                // Define notification message body under the English locale key ("en")
+                put(
+                    "contents",
+                    JSONObject().put("en", message)
+                )
+            }
+
+            // Convert the JSON payload object to a request body formatted as UTF-8 JSON
+            val body = jsonBody.toString().toRequestBody(
+                "application/json; charset=utf-8".toMediaTypeOrNull()
+            )
+
+            // Construct the HTTP POST request to OneSignal's REST API endpoint
+            val request = Request.Builder()
+                // Set target API endpoint URL
+                .url("https://onesignal.com/api/v1/notifications")
+                // Authorize using Key scheme in headers (modern standard)
+                .addHeader("Authorization", "Key $restApiKey")
+                // Explicitly declare JSON payload media type in header
+                .addHeader("Content-Type", "application/json")
+                // Define request method as POST with the JSON body
+                .post(body)
+                // Build the final request object
+                .build()
+
+            // Spawn a new background thread to execute the synchronous network call safely
+            Thread {
+                try {
+                    // Execute the network request and retrieve the response
+                    val response = client.newCall(request).execute()
+
+                    // Log response payload/status for debugging and audit purposes
+                    Log.d(
+                        "OneSignal",
+                        "Notification Sent to All: ${response.body?.string()}"
+                    )
+                } catch (e: Exception) {
+                    // Log execution failure if the network request fails
+                    Log.e(
+                        "OneSignal",
+                        "Send to All Failed",
+                        e
+                    )
+                }
+            }.start()
+
+        } catch (e: Exception) {
+            // Catch and log any JSON building exception defensively
+            Log.e(
+                "OneSignal",
+                "JSON Error in sendToAll",
                 e
             )
         }

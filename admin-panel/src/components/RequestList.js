@@ -68,6 +68,68 @@ function RequestList({ showToast }) {
     auditLogs: []
   });
 
+  // Broadcast State
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastSending, setBroadcastSending] = useState(false);
+
+  const sendBroadcastNotification = async () => {
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) {
+      showToast("Please fill in both the title and the message", "error");
+      return;
+    }
+
+    console.log("🔔 [BROADCAST] Preparing to send push notification...");
+    console.log("  - Title:", broadcastTitle);
+    console.log("  - Message:", broadcastMessage);
+
+    setBroadcastSending(true);
+    try {
+      const endpoint = window.location.hostname === "localhost"
+        ? "http://localhost:3001/send-notification"
+        : "/api/send-notification";
+      console.log(`  - Target URL: ${endpoint}`);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Key os_v2_app_5jldkzyeangtdly2enitb655npnnjeoeuekupbfvlcx2gdxqkoakr2tewk6e667qtlgencloxim5gfb5w7634qkoa7fhg2qyygjtcji"
+        },
+        body: JSON.stringify({
+          app_id: "ea563567-0403-4d31-af1a-235130fbbd6b",
+          included_segments: ["Subscribed Users"],
+          headings: { en: broadcastTitle },
+          contents: { en: broadcastMessage }
+        })
+      });
+
+      console.log(`🔔 [BROADCAST] HTTP Status Received: ${response.status} ${response.statusText}`);
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("🔔 [BROADCAST] Success response from server:", responseData);
+        showToast("Broadcast message sent successfully to all users!", "success");
+        setBroadcastTitle("");
+        setBroadcastMessage("");
+        setBroadcastModalOpen(false);
+      } else {
+        const errorText = await response.text();
+        console.error("🔔 [BROADCAST] Failure response from server:", errorText);
+        showToast("Failed to send broadcast: " + errorText, "error");
+      }
+    } catch (error) {
+      console.error("🔔 [BROADCAST] Network/Unexpected error:", error);
+      showToast("Network error: " + error.message, "error");
+    } finally {
+      setBroadcastSending(false);
+    }
+  };
+
+
+
+
   // =========================================================
   // 🔥 FETCH PENDING APPLICATIONS & SMART RETRIEVAL
   // =========================================================
@@ -193,7 +255,26 @@ function RequestList({ showToast }) {
         const cat = p.serviceType || p.category || "General Services";
         catCounts[cat] = (catCounts[cat] || 0) + 1;
 
-        const clu = p.cluster || "Sangli";
+        // Smart dynamic cluster resolver
+        let clu = "Unassigned";
+        if (p.cluster) {
+          const matched = STANDARD_CLUSTERS.find(c => c.toLowerCase() === p.cluster.toLowerCase());
+          if (matched) clu = matched;
+        } else {
+          // Look inside other text fields
+          const addressText = [
+            p.city,
+            p.location,
+            p.address,
+            p.fullAddress,
+            p.area
+          ].filter(Boolean).join(" ").toLowerCase();
+
+          if (addressText.includes("sangli")) clu = "Sangli";
+          else if (addressText.includes("kolhapur")) clu = "Kolhapur";
+          else if (addressText.includes("belgaum") || addressText.includes("belgav") || addressText.includes("belgavi")) clu = "Belgaum";
+          else if (addressText.includes("ichalkaranji") || addressText.includes("ichal")) clu = "ichalkaranji";
+        }
         cluCounts[clu] = (cluCounts[clu] || 0) + 1;
       });
 
@@ -449,6 +530,49 @@ function RequestList({ showToast }) {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </span>
+          </div>
+        </button>
+
+        {/* Stat Panel 4: Send Broadcast Message */}
+        <button
+          onClick={() => setBroadcastModalOpen(true)}
+          className="lbo-card animate-slide-up"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "20px",
+            padding: "20px 24px",
+            animationDelay: "0.3s",
+            cursor: "pointer",
+            border: "1px solid var(--border-color)",
+            textAlign: "left",
+            width: "100%",
+            background: "var(--bg-card)",
+            color: "inherit",
+            fontFamily: "inherit",
+            outline: "none"
+          }}
+        >
+          <div className="flex-center" style={{
+            width: "48px",
+            height: "48px",
+            borderRadius: "50%",
+            backgroundColor: "rgba(2, 132, 199, 0.15)",
+            color: "#0284c7"
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M22 2L11 13"></path>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </div>
+          <div>
+            <h4 style={{ fontSize: "1.75rem", fontWeight: "800", lineHeight: 1.1 }}>Broadcast</h4>
+            <span style={{ fontSize: "0.85rem", color: "var(--color-text-secondary)", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+              <span>Send Message to All</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
             </span>
           </div>
@@ -1312,17 +1436,18 @@ function RequestList({ showToast }) {
                     <div style={{ padding: "16px", backgroundColor: "var(--bg-input)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-color)", display: "flex", flexDirection: "column", gap: "12px" }}>
                       <h4 style={{ fontSize: "0.95rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.03em" }}>Location Clusters</h4>
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        {STANDARD_CLUSTERS.map(clus => {
+                        {[...STANDARD_CLUSTERS, "Unassigned"].map(clus => {
                           const val = analyticsData.clusterCounts[clus] || 0;
+                          if (clus === "Unassigned" && val === 0) return null;
                           const pct = analyticsData.providersCount > 0 ? Math.min(100, Math.round((val / analyticsData.providersCount) * 100)) : 0;
                           return (
                             <div key={clus} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: "700" }}>
-                                <span>{clus} Cluster</span>
+                                <span>{clus === "Unassigned" ? "Unassigned" : `${clus} Cluster`}</span>
                                 <span>{val} ({pct}%)</span>
                               </div>
                               <div style={{ height: "6px", width: "100%", backgroundColor: "var(--border-color)", borderRadius: "3px", overflow: "hidden" }}>
-                                <div style={{ height: "100%", width: `${pct}%`, backgroundColor: "var(--color-success)" }} />
+                                <div style={{ height: "100%", width: `${pct}%`, backgroundColor: clus === "Unassigned" ? "var(--color-text-muted)" : "var(--color-success)" }} />
                               </div>
                             </div>
                           );
@@ -1402,8 +1527,146 @@ function RequestList({ showToast }) {
         </div>
       )}
 
+      {/* ====================================================================
+         🔥 BROADCAST NOTIFICATION MODAL OVERLAY
+         ==================================================================== */}
+      {broadcastModalOpen && (
+        <div className="modal-overlay flex-center" onClick={() => setBroadcastModalOpen(false)}>
+          <div
+            className="modal-content-container animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "500px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+              padding: "24px"
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}>
+              <div>
+                <span style={{ fontSize: "0.75rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-muted)" }}>
+                  Push Broadcast
+                </span>
+                <h3 style={{ fontSize: "1.25rem", fontWeight: "800", marginTop: "2px" }}>
+                  Send Message to All Users
+                </h3>
+              </div>
+              <button
+                onClick={() => setBroadcastModalOpen(false)}
+                className="lbo-btn lbo-btn-secondary"
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  padding: 0,
+                  borderRadius: "50%",
+                  justifyContent: "center"
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "var(--color-text-secondary)" }}>
+                  Notification Title
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. System Announcement or New Promo!"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  className="lbo-input"
+                  maxLength={100}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: "700", color: "var(--color-text-secondary)" }}>
+                  Message Content
+                </label>
+                <textarea
+                  placeholder="Write the message you want to broadcast to all subscribed users..."
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  className="lbo-input"
+                  style={{
+                    minHeight: "120px",
+                    resize: "vertical",
+                    padding: "12px",
+                    fontFamily: "inherit",
+                    lineHeight: "1.5"
+                  }}
+                  maxLength={500}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer / Actions */}
+            <div style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "12px",
+              marginTop: "8px"
+            }}>
+              <button
+                onClick={() => setBroadcastModalOpen(false)}
+                className="lbo-btn lbo-btn-secondary"
+                disabled={broadcastSending}
+                style={{ padding: "10px 20px" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendBroadcastNotification}
+                className="lbo-btn lbo-btn-primary"
+                disabled={broadcastSending}
+                style={{
+                  padding: "10px 24px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}
+              >
+                {broadcastSending ? (
+                  <>
+                    <div style={{
+                      width: "16px",
+                      height: "16px",
+                      border: "2px solid rgba(255, 255, 255, 0.3)",
+                      borderTop: "2px solid #ffffff",
+                      borderRadius: "50%",
+                      animation: "App-logo-spin 1s linear infinite"
+                    }} />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M22 2L11 13"></path>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                    <span>Send Broadcast</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
 
-export default RequestList;
+export default RequestList;
